@@ -6,5 +6,5 @@
 *.png
 
 ## ignoring directories ##
-workflow/data
-workflow/figures
+workflows/data
+workflows/figures
