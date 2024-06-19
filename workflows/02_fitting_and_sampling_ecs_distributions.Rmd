@@ -1,0 +1,115 @@
+---
+title: "Fitting distribution to S20 ECS data"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Goal 
+
+The goal of this script is to fit and easy to sample parametric distribution to the ECS values provided in S20. We will then sample the distributions, save the data, and visualize them.
+
+```{r}
+library(MASS)
+```
+
+# Fit Distribution to the data 
+
+We use `fitdistr()` (function in the `MASS` package) to maximize the likelihood of distribution hyper-parameters for each ECS configuration data set. Using this method makes it easier to propose, sample, and reproduce distributions for S20 evidence configurations, but makes the assumption that ECS follows a gamma distribution. 
+
+The goal of this method is to reproduce an easy to sample likelihood distribution that has similar peak and spread as the distributions presented in S20 for each evidence configuration. The result of `fitdistr()` is the optimal `shape` and `rate` hyper-parameters of the gamma distributions for each evidence configuration. These distribution hyper-parameters are then used to sample the proposed parametric likelihood distribution with `rlgamma()`. Thus, we are attempting to produce data samples that characterize the uncertainty of ECS from different evidence configurations. In a future step the uncertainty will be propagated through `hector` simulations using `matilda`.
+
+Some notes on `fitdistr()` usage: The function fits a maximum likelihood distribution to each element in the data list. It is possible to manipulate it in several ways. In and effort to minimize bias I do not make extraneous changes to the resulting distribution.
+
+```{r}
+# read in the ecs_data and store as a list 
+ecs_data <- readRDS("data/ecs_data_S20_supplement.RDS")
+
+ecs_data_list <- as.list(ecs_data)
+```
+
+Produce the rate and shape hyper-parameters for the gamma distributions for each element in `ecs_data_list`.
+
+`lapply()` will run `fitdistr()` with the gamma density function (`densfun`) for each element in `ecs_data_list`:
+
+```{r}
+hyper_param_list <- lapply(ecs_data_list, 
+                           fitdistr, 
+                           densfun = "gamma")
+```
+
+The result from the code is a new list (`hyper_param_list`) of estimated `rate` and `shape` parameters of a gamma distribution for each evidence configuration.
+
+# Sample Distributions
+
+We obtain a sample of ECS values for each evidence configuration using the hyper-parameters produced by applying a gamma distribution likelihood fit using the S20 ECS percentiles for each evidence configuration.   
+
+We produce `n = 15000` samples for each of the evidence configurations using `rgamma` with the `shape` and `rate` hyper-parameters stored in `hyper_param_list`.
+
+```{r, results='hide'}
+# set seed for reproducible results
+set.seed(123)
+
+# set n value - how many ECS samples produced for each evidence configuration
+n = 15000
+
+# The shape and rate parameters are retrieved from each element (referred to as 'evidence') and 
+# used as inputs for rgamma.
+ecs_sample_list <- lapply(hyper_param_list, function(evidence) {
+  data.frame(ECS = rgamma(n,
+                          shape = evidence$estimate["shape"],
+                          rate = evidence$estimate["rate"]))
+  
+})
+
+# save data for supplemental figure script
+saveRDS(ecs_sample_list, "data/ecs_samples_from_gamma_dist.RDS")
+```
+
+The result is a new list (`ecs_sample_list`) of data frames, one for each evidence scenario, that contains a vector of ECS values sampled from respective gamma distributions. 
+
+# Visualize Simulated Samples
+
+```{r}
+library(ggplot2)
+```
+
+Once the ECS samples are produced and stored in a list of data frames (`ecs_sample_list`), we visualize the sample distribution with `ggplot2`.
+
+Before working in `ggplot2`, we build a single data frame with all samples and the name of the evidence configurations fro each sample to make it easier to plot. 
+
+We complete this by creating a new data frame `ecs_samples_df` from elements in `ecs_sample_list`. 
+
+In the data frame `value` contains the unlisted ECS samples from `ecs_sample_list`. This combines the vectors of each element in `ecs_sample_list` into a single vector under the `value` column.
+The `evidence` column repeats names of each element in `ecs_sample_list` `n` times. Note: `n` is set to 15,000 for each evidence combination. We remove row names to ensure a clean result.
+
+```{r}
+ecs_sample_df <- data.frame(
+  
+  value = unlist(ecs_sample_list),
+  evidence = rep(names(ecs_sample_list), each = n),
+  row.names = NULL
+  
+)
+
+# save data for supplemental figure script
+saveRDS(ecs_sample_df, "data/ecs_samples_plot_data.RDS")
+```
+
+The result is a data frame that combines ECS values sampled from gamma distributions for each evidence configuration (15,000 samples x 5 evidence scenarios = 75,000 rows). Each row is labeled with the name of the evidence configuration the value belongs to.   
+
+Plot ECS samples as a`geom_density` with faceted by `evidence`. We use `geom_density()` to plot with desired scale (`scale_x_continuous`) and facet figure by `evidence` (evidence configuration name) to produce a multi-pane figure. 
+
+```{r}
+ggplot() +
+  geom_density(data = ecs_sample_df,
+               aes(x = value, 
+                   color = evidence)) +
+  theme_light() +
+  scale_x_continuous(breaks = seq(from = 0, to = 10, 
+                                  by = 1)) +
+  facet_wrap(~ evidence)
+
+```

@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.RDS
+*.png
+
+## ignoring directories ##
+workflow/data
+workflow/figures

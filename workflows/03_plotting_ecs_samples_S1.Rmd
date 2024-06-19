@@ -1,0 +1,79 @@
+---
+title: "Plotting ECS distirbutions from estimated gamma distributions"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Goal 
+
+Produce a figure with the ECS samples. This may serve as a good supplemental figure for the paper to show the distribution shapes for the evidence configurations from S20, based on gamma distirbution assumption. 
+
+```{r}
+library(tidyverse)
+```
+# Produce figure
+
+We produce PDF curves in a panel using the color palette and then save the figure in the `figures` directory.
+
+This code will will produce the publication level figure. A simple visualization is available in `02_fitting_andsampling_ecs_distributions.Rmd`.
+
+```{r}
+ecs_samples_df <- readRDS("data/ecs_samples_plot_data.RDS")
+
+# copy data to new df
+ecs_df_S1 <- ecs_samples_df
+
+# recode evidence configurations for aesthetics
+ecs_df_S1$evidence <- ecs_samples_df$evidence %>%
+  recode(
+    No_Process = "No Process",
+    No_Historical = "No Historical",
+    No_Paleoclimate = "No Paleoclimate",
+    Baseline_Emergent_constraints = "Baseline + Emergent constraints"
+  )
+
+# edit order of the facet panels
+facet_order <- c(
+  "Baseline",
+  "No Process",
+  "No Historical",
+  "No Paleoclimate",
+  "Baseline + Emergent constraints"
+)
+
+# convert the evidence configuration to factor with the facet order we want
+ecs_df_S1$evidence <- factor(ecs_df_S1$evidence, levels = facet_order)
+
+# plot with ggplot"
+ggplot() +
+  geom_density(data = ecs_df_S1,
+               aes(x = value, 
+                   color = evidence,
+                   fill = evidence),
+               linewidth = 0.75, 
+               alpha = 0.2) +
+  scale_color_manual(values = 
+                       c("#003466", "#00a9cf", "#550307", "#EBCC2A", "#F21A00"), 
+                     name = "Evidence") +
+  scale_fill_manual(values = 
+                      c("#003466", "#00a9cf", "#550307", "#EBCC2A", "#F21A00"), 
+                    name = "Evidence") +
+  scale_x_continuous(breaks = seq(from = 0, to = 10, 
+                                  by = 1)) +
+  labs(x = "Equilibrium Climate Sensitivity Value",
+       y = "Densisty") +
+  facet_wrap(~ evidence) +
+  theme_light() +
+  theme(legend.position = c(0.84,0.25))
+
+ggsave("figures/S1_fig.png",
+       device = "png",
+       width = 7,
+       height = 5,
+       units = "in",
+       dpi = "print")
+```
+

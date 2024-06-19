@@ -1,0 +1,106 @@
+---
+title: "Building dataset of ECS values from Sherwood 2020"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Goal 
+
+Build and save dataset of ECS values from different ECS configuraiton distirbutions as provided by S20 supplemental information.
+
+# Building data set
+
+Here we are building ECS data sets for each of the evidence configurations of interest. We are using data from [Sherwood et al. 2020](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2019RG000678) henceforth referred to as S20. The data was drawn from the supplemental information in S20 and represents ECS percentile estimates from likelihood distributions quantified in S20 for each of the five evidence configurations (each containing different combinations of lines of evidence). There are other configurations available in S20 beyond the five we have chosen here. The percentile estimates reported in this data represent the 5th, 10th, 17th, 20th, 25th, 50th, 75th, 80th, 83rd, 80th, and 95th percentile, as well as the mode and the mean. 
+
+Names of each vector list are coded to represent the evidence configuration the data are associated with.
+
+```{r}
+ecs_data_list <- list(
+  "Baseline" = c(
+    2.1950,
+    2.3849,
+    2.5750,
+    2.6450,
+    2.7450,
+    3.2150,
+    3.7850,
+    3.9450,
+    4.055,
+    4.4149,
+    4.8650,
+    3.0249,
+    3.33741
+  ),
+  "No_Process" = c(
+    2.0850,
+    2.2850,
+    2.4750,
+    2.5450,
+    2.6550,
+    3.1649,
+    3.8150,
+    4.0050,
+    4.1450,
+    4.5750,
+    5.1450,
+    2.9149,
+    3.341
+  ),
+  "No_Historical" = c(
+    2.0450,
+    2.2250,
+    2.4050,
+    2.4750,
+    2.5750,
+    3.0450,
+    3.6250,
+    3.7850,
+    3.9050,
+    4.2749,
+    4.7550,
+    2.8150,
+    3.1799
+  ),
+  "No_Paleoclimate" = c(
+    2.0549,
+    2.3150,
+    2.5750,
+    2.6649,
+    2.8150,
+    3.5249,
+    4.5150,
+    4.8250,
+    5.0650,
+    5.8650,
+    7.0750,
+    3.0050,
+    3.9729
+  ),
+  "Baseline_Emergent_constraints" = c(
+    2.2749,
+    2.4750,
+    2.6649,
+    2.7350,
+    2.8350,
+    3.3150,
+    3.8849,
+    4.0450,
+    4.1550,
+    4.5150,
+    4.9550,
+    3.0650,
+    3.4313
+  )
+)
+```
+
+Write data frame and store in the `data` directory.
+
+```{r}
+ecs_df <- data.frame(ecs_data_list)
+
+saveRDS(ecs_df, "data/ecs_data_S20_supplement.RDS")
+```
