@@ -374,12 +374,6 @@ saveRDS(eoc_global_tas_ensemble, "data/weighted_global_tas_metrics.RDS")
 
 ```
 
-We now have new objects as followed:
-
-1. `eoc_warming_results` - a list of data frames (one for each ECS scenario) that contain metric values for each `run_number`.
-
-2. `weighted_eco_warming_results` - a list of data frames that is identical to `eoc_warming_results` but with an added column containing corresponding likelihood weights for each `run_number`.
-
 # Computing Probabilities
 
 We compute probabilities using the likelihood weights and the warming metrics produced for each ECS scenario. The probability calculation sums weights (which total to 1.0) as warming metrics are grouped into bins we define. Here, bins represent ranges of warming that could potentially occur at the end of the century. In this way, the sum of the weights for each bin (warming range) is proportional to the probability of that warming range occurring according to the models response to parameter uncertainty. This step is where model weights become particularly important because a higher weight (representing closer alignment to historical data) will have a larger influence on the total probability of a warming range than an unskilled model (low likelihood based on alignment with historical data).
@@ -388,21 +382,21 @@ To compute probabilities we call `prob_calc` for each of the data frame in the `
 
 ```{r}
 # copy over element names 
-names(weighted_eoc_warming_results) <- names(model_weights)
+names(eoc_global_tas_ensemble) <- names(weighted_ensemble)
 
 # define bins that represent the warming ranges of interest
 temp_ranges <- c(0, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, Inf)
 
 # computing probabilities 
-probability_results <- lapply(names(weighted_eoc_warming_results), function(df_name){
+temp_probability <- lapply(names(eoc_global_tas_ensemble), function(df_name){
   
   # copy data based on element name
-  df <- weighted_eoc_warming_results[[df_name]]
+  df <- eoc_global_tas_ensemble[[df_name]]
   
   # run prob_calc
   prob_result <- prob_calc(df$metric_result,
                            bins = temp_ranges,
-                           scores = df$mc_weight)
+                           scores = df$weight_norm)
   
   # add scenario column 
   prob_result$scenario <- df_name
@@ -410,9 +404,12 @@ probability_results <- lapply(names(weighted_eoc_warming_results), function(df_n
   return(prob_result)
 })
 
+# copy element names again
+names(temp_probability) <- names(eoc_global_tas_ensemble)
+
 # Save full data frame for future visualization
-saveRDS(probability_results, "data/probability_results.RDS")
+saveRDS(temp_probability, "data/temp_probability_results.RDS")
 
 ```
 
-The result from this code is an object called `probability_result`, a list of data frames (one for each ECS scenario) that contain the weighted temperature range probabilities. We bind the data frames in this list and save the single large data frame as an .RDS file in the `data` directory.
+The result from this code is a list of data frames (one for each ECS scenario) that contain the weighted temperature range probabilities.
