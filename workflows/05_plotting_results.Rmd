@@ -1,0 +1,182 @@
+---
+title: "Producing Figures"
+author: "Joe Brown"
+date: "2024-06-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Goal
+
+The goal of this script is to produce figures to visualize results of ECS evidence analysis.
+
+```{r}
+library(matilda)
+library(tidyverse)
+library(MASS)
+library(spatstat)
+```
+
+# Weighted ensemble
+
+```{r}
+ggplot(data = eoc_warming_ensemble) +
+  geom_line(aes(x = year, 
+                y = value, 
+                group = run_number, 
+                color = weight_norm, 
+                alpha = weight_norm), 
+            linewidth= 0.1) +
+  scale_color_gradient(low = "lightblue", high = "dodgerblue4", name = "Weights") +
+  scale_alpha_continuous(range(c(0,1))) +
+  labs(x = "Years", y = "Temp") +
+  theme_light() +
+  guides(alpha = "none") +
+  facet_wrap(~ scenario)
+  
+
+# ggsave("workflows/figures/gsat_ensemble.png",
+#        device = "png",
+#        width = 28,
+#        height = 15, 
+#        units = "cm",
+#        dpi = "print")
+```
+
+
+# Median temperature and confidence interval
+
+Compute the weighted median and confidence intervals.
+
+```{r}
+# adding scenario names to gmst_95_to_14 data
+gmst_ensemble <- lapply(names(gmst_95_to_14), function(name){
+  
+  df <- gmst_95_to_14[[name]]
+  
+  df$scenario <- name
+  
+  return(df)
+  
+})
+
+# bind weighted ensemble
+eoc_warming_ensemble <- do.call(rbind, gmst_ensemble)
+
+# median (CI) warming calculation
+warming_projection <- eoc_warming_ensemble %>% 
+  group_by(year, scenario) %>% 
+  summarize(
+    median = weighted.quantile(x = value, w = weight_norm, probs = 0.5), 
+    ci_5 = weighted.quantile(x = value, w = weight_norm, probs = 0.05),
+    ci_16 = weighted.quantile(x = value, w = weight_norm, probs = 0.16), 
+    ci_84 = weighted.quantile(x = value, w = weight_norm, probs = 0.84), 
+    ci_95 = weighted.quantile(x = value, w = weight_norm, probs = 0.95),
+    ci_66 = weighted.quantile(x = value, w = weight_norm, probs = 0.66), 
+    ci_33 = weighted.quantile(x = value, w = weight_norm, probs = 0.33),
+    .groups = "drop")
+
+```
+
+Plotting temperature projections:
+
+```{r}
+# recoding scenario names for the plot
+warming_projection$scenario <- recode_factor(
+  warming_projection$scenario,
+  No_Historical = "No Historical",
+  No_Process = "No Process",
+  No_Paleoclimate = "No Paleoclimate",
+  Baseline_Emergent_constraints = "Baseline + Emergent constraints")
+
+
+# Order factor levels for plot facet 
+facet_order <- c("Baseline",
+                 "No Process",
+                 "No Historical",
+                 "No Paleoclimate",
+                 "Baseline + Emergent constaints")
+
+```
+
+Construct plot: 
+
+```{r}
+colors <- c("#003466", "#00a9cf", "#550307", "#EBCC2A", "#F21A00")
+
+temp_projection_plot <- 
+  ggplot(data = subset(warming_projection, 
+                       year > 2014)) +
+  geom_line(aes(x = year, 
+                y = median, 
+                color = scenario), 
+            linewidth = 0.75) +
+  scale_color_manual(values = colors) +
+  geom_ribbon(aes(x = year, 
+                  ymin = ci_5, 
+                  ymax = ci_95, 
+                  fill = scenario, 
+                  color = scenario), 
+              alpha = 0.1, 
+              linetype = "blank") +
+  # geom_ribbon(aes(x = year, 
+  #                 ymin = ci_16, 
+  #                 ymax = ci_84, 
+  #                 fill = scenario, 
+  #                 color = scenario), 
+  #             alpha = 0.2, 
+  #             linetype = "blank") +
+  scale_fill_manual(values = colors) +
+  labs(x = "Year", 
+       y = expression(paste("Future Warming (GSAT) relative to 1995-2014 (", degree, "C)"))) +
+  theme_light(base_size = 16) +
+  theme(legend.position = "none")
+  #facet_wrap(~ scenario)
+
+temp_projection_plot
+```
+```{r}
+historic_tas_subset <- subset(eoc_warming_ensemble, 
+                              variable == GLOBAL_TAS() &
+                                year > 1849 &
+                                year < 2025)
+
+historic_plot_data <- historic_tas_subset %>% 
+  group_by(scenario, year) %>% 
+  summarize(
+    median = weighted.quantile(value, w = weight_norm, probs = 0.5),
+    lower_ci = weighted.quantile(value, w = weight_norm, probs = 0.05),
+    upper_ci = weighted.quantile(value, w = weight_norm, probs = 0.95),
+    .groups = "drop")
+
+```
+
+```{r}
+temp_projection_plot +
+  geom_line(data = historic_plot_data, 
+            aes(x = year, 
+                y = median), 
+            color = "black",
+            linewidth = 0.7) +
+  geom_ribbon(data = historic_plot_data, 
+              aes(x = year, 
+                  ymin = lower_ci, 
+                  ymax = upper_ci), 
+              fill = "black",
+              alpha = 0.2) +
+  geom_point(data = matilda:::adjusted_gmst_data, 
+             aes(x = year, 
+                 y = anomaly_C), 
+             color = "black")
+```
+
+
+```{r}
+# bind eoc temperature data
+eoc_warming_dat <- do.call(rbind, eoc_global_tas_ensemble)
+row.names(eoc_warming_dat) <- NULL 
+```
+

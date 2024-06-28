@@ -25,9 +25,8 @@ Some notes on `fitdistr()` usage: The function fits a maximum likelihood distrib
 
 ```{r}
 # read in the ecs_data and store as a list 
-ecs_data <- readRDS("data/ecs_data_S20_supplement.RDS")
+ecs_data <- readRDS("data/ecs_posterior_data_S20.RDS")
 
-ecs_data_list <- as.list(ecs_data)
 ```
 
 Produce the rate and shape hyper-parameters for the gamma distributions for each element in `ecs_data_list`.
@@ -35,9 +34,10 @@ Produce the rate and shape hyper-parameters for the gamma distributions for each
 `lapply()` will run `fitdistr()` with the gamma density function (`densfun`) for each element in `ecs_data_list`:
 
 ```{r}
-hyper_param_list <- lapply(ecs_data_list, 
+hyper_param_list <- lapply(ecs_data, 
                            fitdistr, 
                            densfun = "gamma")
+
 ```
 
 The result from the code is a new list (`hyper_param_list`) of estimated `rate` and `shape` parameters of a gamma distribution for each evidence configuration.
@@ -50,7 +50,7 @@ We produce `n = 15000` samples for each of the evidence configurations using `rg
 
 ```{r, results='hide'}
 # set seed for reproducible results
-set.seed(123)
+set.seed(1001)
 
 # set n value - how many ECS samples produced for each evidence configuration
 n = 15000
@@ -65,7 +65,7 @@ ecs_sample_list <- lapply(hyper_param_list, function(evidence) {
 })
 
 # save data for supplemental figure script
-saveRDS(ecs_sample_list, "data/ecs_samples_from_gamma_dist.RDS")
+saveRDS(ecs_sample_list, "data/initial_ecs_samples_from_gamma_dist.RDS")
 ```
 
 The result is a new list (`ecs_sample_list`) of data frames, one for each evidence scenario, that contains a vector of ECS values sampled from respective gamma distributions. 
@@ -86,6 +86,9 @@ In the data frame `value` contains the unlisted ECS samples from `ecs_sample_lis
 The `evidence` column repeats names of each element in `ecs_sample_list` `n` times. Note: `n` is set to 15,000 for each evidence combination. We remove row names to ensure a clean result.
 
 ```{r}
+# save data for supplemental figure script
+saveRDS(ecs_sample_list, "data/ecs_samples_plot_data.RDS")
+
 ecs_sample_df <- data.frame(
   
   value = unlist(ecs_sample_list),
@@ -93,9 +96,6 @@ ecs_sample_df <- data.frame(
   row.names = NULL
   
 )
-
-# save data for supplemental figure script
-saveRDS(ecs_sample_df, "data/ecs_samples_plot_data.RDS")
 ```
 
 The result is a data frame that combines ECS values sampled from gamma distributions for each evidence configuration (15,000 samples x 5 evidence scenarios = 75,000 rows). Each row is labeled with the name of the evidence configuration the value belongs to.   
@@ -108,8 +108,18 @@ ggplot() +
                aes(x = value, 
                    color = evidence)) +
   theme_light() +
-  scale_x_continuous(breaks = seq(from = 0, to = 10, 
+  scale_x_continuous(breaks = seq(from = 0, to = 9, 
                                   by = 1)) +
   facet_wrap(~ evidence)
 
 ```
+
+Compute comparison of quantile values for the proportions published in the 
+
+```{r}
+
+quantile(ecs_sample_list$No_Paleoclimate$ECS, probs = c(0.05, 0.17, 0.50, 0.83, 0.95))
+
+```
+
+

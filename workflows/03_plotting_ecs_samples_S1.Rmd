@@ -21,13 +21,19 @@ We produce PDF curves in a panel using the color palette and then save the figur
 This code will will produce the publication level figure. A simple visualization is available in `02_fitting_andsampling_ecs_distributions.Rmd`.
 
 ```{r}
-ecs_samples_df <- readRDS("data/ecs_samples_plot_data.RDS")
+ecs_sample_list <- readRDS("data/ecs_samples_plot_data.RDS")
 
-# copy data to new df
-ecs_df_S1 <- ecs_samples_df
+# convert to dataframe
+ecs_df_S1 <- data.frame(
+  
+  value = unlist(ecs_sample_list),
+  evidence = rep(names(ecs_sample_list), each = n),
+  row.names = NULL
+  
+)
 
 # recode evidence configurations for aesthetics
-ecs_df_S1$evidence <- ecs_samples_df$evidence %>%
+ecs_df_S1$evidence <- ecs_df_S1$evidence %>%
   recode(
     No_Process = "No Process",
     No_Historical = "No Historical",
@@ -54,14 +60,15 @@ ggplot() +
                    color = evidence,
                    fill = evidence),
                linewidth = 0.75, 
-               alpha = 0.2) +
+               alpha = 0.2, 
+               bw = 0.3) +
   scale_color_manual(values = 
                        c("#003466", "#00a9cf", "#550307", "#EBCC2A", "#F21A00"), 
                      name = "Evidence") +
   scale_fill_manual(values = 
                       c("#003466", "#00a9cf", "#550307", "#EBCC2A", "#F21A00"), 
                     name = "Evidence") +
-  scale_x_continuous(breaks = seq(from = 0, to = 10, 
+  scale_x_continuous(breaks = seq(from = 0, to = 9, 
                                   by = 1)) +
   labs(x = "Equilibrium Climate Sensitivity Value",
        y = "Densisty") +
