@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The goal of this script is to produce figures to visualize results of ECS evidence analysis.
 
-```{r}
+```{r, message=FALSE}
 library(matilda)
 library(tidyverse)
 library(MASS)
@@ -23,7 +23,22 @@ library(spatstat)
 # Weighted ensemble
 
 ```{r}
-ggplot(data = eoc_warming_ensemble) +
+weighted_gsat_ensemble <- readRDS("data/weighted_gsat_ensemble.RDS")
+
+eoc_gsat <- lapply(names(weighted_gsat_ensemble), function(df_name) {
+  
+  data <- weighted_gsat_ensemble[[df_name]]
+  
+  data$scenario <- df_name
+  
+  return(data)
+  
+})
+
+
+eoc_gsat_df <- do.call(rbind, eoc_gsat)
+
+ggplot(data = eoc_gsat_df) +
   geom_line(aes(x = year, 
                 y = value, 
                 group = run_number, 
@@ -37,37 +52,21 @@ ggplot(data = eoc_warming_ensemble) +
   guides(alpha = "none") +
   facet_wrap(~ scenario)
   
-
-# ggsave("workflows/figures/gsat_ensemble.png",
-#        device = "png",
-#        width = 28,
-#        height = 15, 
-#        units = "cm",
-#        dpi = "print")
+ggsave("figures/S2_fig_gsat_ensemble.png",
+       device = "png",
+       width = 28,
+       height = 15,
+       units = "cm",
+       dpi = "print")
 ```
-
 
 # Median temperature and confidence interval
 
 Compute the weighted median and confidence intervals.
 
 ```{r}
-# adding scenario names to gmst_95_to_14 data
-gmst_ensemble <- lapply(names(gmst_95_to_14), function(name){
-  
-  df <- gmst_95_to_14[[name]]
-  
-  df$scenario <- name
-  
-  return(df)
-  
-})
-
-# bind weighted ensemble
-eoc_warming_ensemble <- do.call(rbind, gmst_ensemble)
-
 # median (CI) warming calculation
-warming_projection <- eoc_warming_ensemble %>% 
+warming_projection <- eoc_gsat_df %>% 
   group_by(year, scenario) %>% 
   summarize(
     median = weighted.quantile(x = value, w = weight_norm, probs = 0.5), 
@@ -109,7 +108,7 @@ colors <- c("#003466", "#00a9cf", "#550307", "#EBCC2A", "#F21A00")
 
 temp_projection_plot <- 
   ggplot(data = subset(warming_projection, 
-                       year > 2014)) +
+                       year > 2023)) +
   geom_line(aes(x = year, 
                 y = median, 
                 color = scenario), 
@@ -133,16 +132,16 @@ temp_projection_plot <-
   labs(x = "Year", 
        y = expression(paste("Future Warming (GSAT) relative to 1995-2014 (", degree, "C)"))) +
   theme_light(base_size = 16) +
-  theme(legend.position = "none")
-  #facet_wrap(~ scenario)
+  theme(legend.position = "none") +
+  facet_wrap(~ scenario)
 
 temp_projection_plot
 ```
+
 ```{r}
-historic_tas_subset <- subset(eoc_warming_ensemble, 
-                              variable == GLOBAL_TAS() &
+historic_tas_subset <- subset(eoc_gsat_df, 
                                 year > 1849 &
-                                year < 2025)
+                                year < 2024)
 
 historic_plot_data <- historic_tas_subset %>% 
   group_by(scenario, year) %>% 
@@ -155,28 +154,148 @@ historic_plot_data <- historic_tas_subset %>%
 ```
 
 ```{r}
+# recoding scenario names for the plot
+historic_plot_data$scenario <- recode_factor(
+  historic_plot_data$scenario,
+  No_Historical = "No Historical",
+  No_Process = "No Process",
+  No_Paleoclimate = "No Paleoclimate",
+  Baseline_Emergent_constraints = "Baseline + Emergent constraints")
+
+
+# Order factor levels for plot facet 
+facet_order <- c("Baseline",
+                 "No Process",
+                 "No Historical",
+                 "No Paleoclimate",
+                 "Baseline + Emergent constaints")
+
+# normalize obs historical temperature
+## normalization function
+data_normalization <- function(data, reference_years) {
+  
+  reference_data <- data[data$year %in% reference_years, ]
+  
+  mean_reference_period <- mean(reference_data$value)
+  
+  normalize_values <- data$value - mean_reference_period
+  
+  data$value <- normalize_values
+  
+  return(data)
+  
+}
+
+
+# normalizing historical data to the reference period
+reference_historical <- data_normalization(temp_hist, 1995:2014)
+```
+
+
+```{r}
 temp_projection_plot +
+    geom_point(data = reference_historical, 
+             aes(x = year, 
+                 y = value), 
+             color = "black", 
+             size = 0.3) + 
   geom_line(data = historic_plot_data, 
             aes(x = year, 
                 y = median), 
-            color = "black",
+            color = "#92397a",
             linewidth = 0.7) +
   geom_ribbon(data = historic_plot_data, 
               aes(x = year, 
                   ymin = lower_ci, 
                   ymax = upper_ci), 
-              fill = "black",
-              alpha = 0.2) +
-  geom_point(data = matilda:::adjusted_gmst_data, 
-             aes(x = year, 
-                 y = anomaly_C), 
-             color = "black")
+              fill = "#92397a",
+              alpha = 0.2)
+
+
+ggsave("figures/temp_constrained_warming_projections.png",
+       device = "png", 
+       units = "in",
+       width = 10,
+       dpi = "print")
 ```
 
+# Temperature probability
+
+Plotting temperature probabilities for each of the ECS evidence configurations.
+
+Loading data:
+```{r}
+temp_probability <- readRDS("data/temp_probability_results.RDS")
+
+temp_probability_df <- do.call(rbind, temp_probability)
+row.names(temp_probability_df) <- NULL
+
+temp_probability_df <- temp_probability_df %>% 
+  complete(scenario, bins) %>% 
+  mutate(bins = recode(bins, !!!bins_mapping))
+
+temp_probability_df[is.na(temp_probability_df)] <- 0
+```
 
 ```{r}
-# bind eoc temperature data
-eoc_warming_dat <- do.call(rbind, eoc_global_tas_ensemble)
-row.names(eoc_warming_dat) <- NULL 
+# recoding scenario names for the plot
+temp_probability_df$scenario <- recode_factor(
+  temp_probability_df$scenario,
+  Baseline = "Baseline",
+  No_Historical = "No Historical",
+  No_Process = "No Process",
+  No_Paleoclimate = "No Paleoclimate",
+  Baseline_Emergent_constraints = "Baseline + Emergent constraints")
+
+# Order factor levels for plot 
+scenario_order <- 
+  c("Baseline",
+    "No Process",
+    "No Historical",
+    "No Paleoclimate",
+    "Baseline + Emergent constraints")
+
+# order factor levels
+temp_probability_df$scenario <- factor(temp_probability_df$scenario, 
+                                       levels = scenario_order)
+```
+
+The `bang bang bang` operator (`!!!`) expands vectors/lists into individual arguments. Here, this operator allows us to replace the `bins` factor levels according to the vectors in `bins_mapping`. 
+
+Constructing plot:
+```{r}
+probability_plot <- 
+  ggplot(data = temp_probability_df, 
+         aes(fill = bins, 
+             x = scenario, 
+             y = probability)) +
+  geom_bar(position = position_fill(reverse = T), 
+           stat = "identity", 
+           width = 0.6) +
+  scale_y_continuous(breaks = seq(0.0, 1.0, 0.1)) +
+  scale_fill_manual(
+    values = TEMP_PROBABILITY_COLORS,
+    labels = bins_mapping,
+    name = "Warming") +
+  labs(y = "Probability", 
+       x = NULL) +
+  coord_flip() +
+  theme_light(base_size = 16) +
+  theme(legend.position = "bottom", 
+        axis.text = element_text(size = 14))
+
+probability_plot
+
+```
+
+```{r}
+# save the probability plot
+ggsave("figures/fig_NUM_temperature_probability_plot.png", 
+       probability_plot, 
+       device = "png", 
+       width = 12,
+       height = 8, 
+       units = "in", 
+       dpi = "print")
 ```
 

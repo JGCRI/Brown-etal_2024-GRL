@@ -186,16 +186,16 @@ We use this criterion to compute RMSE values for the each of the PPE members. We
 
 ```{r}
 ensemble_gmst_rmse <- lapply(model_result, function(df) {
-  
+
   # subset the data to include gmst results
   gmst_data <- subset(df, variable == "gmst")
 
-  # calculate rmse_values 
+  # calculate rmse_values
   gmst_rmse <- rmse_values(df, temp_criterion, sigma = 1)
-  
+
   # subset the result for gmst RMSE < 0.19
   gmst_rmse_subset <- subset(gmst_rmse, rmse_value < 0.19)
-  
+
   # return the gmst_rmse
   return(gmst_rmse_subset)
 })
@@ -249,7 +249,7 @@ model_weights <- lapply(constrained_result, function(df) {
   weights_ocean_uptake = score_runs(df, 
                                    criterion = ocean_uptake_criterion,
                                    score_function = score_bayesian,
-                                   sigma =1)
+                                   sigma = 1)
   
   # store in a list 
   weights_list = list(weights_co2, weights_ocean_uptake)
@@ -265,9 +265,9 @@ model_weights <- lapply(constrained_result, function(df) {
 ```{r}
 # filter out ensemble members that do not meet the minimum weight constraint (> 1e-6)
 constrained_weights <- lapply(model_weights, function(df) {
-  
+
   filtered_result <- subset(df, mc_weight > 1e-6)
-  
+
   return(filtered_result)
   })
 ```
@@ -275,7 +275,7 @@ constrained_weights <- lapply(model_weights, function(df) {
 Because some of the models have been filtered out, need to re-normalize so weights sum to 1. This way we can still use the resulting ensembles to compute probabilities accurately.
 
 ```{r}
-ensemble_normalized <- lapply(constrained_weights, function(df){
+weights_normalized <- lapply(constrained_weights, function(df){
   
   current_data <- df
   
@@ -295,10 +295,10 @@ We merge model weights with the original result based on run number. This produc
 
 ```{r}
 # combine weights with results data frame - use Map to fun function across elements of two lists
-weighted_ensemble <- Map(merge, constrained_result, ensemble_normalized, by = "run_number")
+weighted_ensemble <- Map(merge, constrained_result, weights_normalized, by = "run_number")
 
 # saving as a list does this work?
-saveRDS(weighted_ensemble, "data/weighted_constrianed_ensemble.RDS")
+saveRDS(weighted_ensemble, "data/weighted_constrained_ensemble.RDS")
 
 ```
 
@@ -340,7 +340,7 @@ gsat_95_to_14 <- lapply(global_tas_data, function(df){
   
 })
 
-saveRDS(gsat_95_to_14, "data/weighted_eoc_gsat_ensemble.RDS")
+saveRDS(gsat_95_to_14, "data/weighted_gsat_ensemble.RDS")
 ```
 
 Define the metric we are interested in calculating.
@@ -370,7 +370,7 @@ eoc_warming_results <- lapply(names(gsat_95_to_14), function(df_name){
 })
 
 # Merge with model weights to get a data frame with weighted metrics
-eoc_gsat_ensemble <- Map(merge, eoc_warming_results, ensemble_normalized, by = "run_number")
+eoc_gsat_ensemble <- Map(merge, eoc_warming_results, weights_normalized, by = "run_number")
 
 # save the result for future visualization
 saveRDS(eoc_gsat_ensemble, "data/weighted_gsat_metrics.RDS")
@@ -408,7 +408,7 @@ temp_probability <- lapply(names(eoc_gsat_ensemble), function(df_name){
 })
 
 # copy element names again
-names(temp_probability_sequence) <- names(eoc_gsat_ensemble)
+names(temp_probability) <- names(eoc_gsat_ensemble)
 
 # Save full data frame for future visualization
 saveRDS(temp_probability, "data/temp_probability_results.RDS")
