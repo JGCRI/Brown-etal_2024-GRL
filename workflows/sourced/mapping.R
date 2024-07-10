@@ -1,4 +1,6 @@
-# Create a mapping to rename bins levels
+## Mapping data to help with renaming and ordering factor levels
+
+# Mapping to rename bin levels
 
 bins_mapping <- c(
   "(0,1]" = "0 to 1.0 C",
@@ -11,3 +13,12 @@ bins_mapping <- c(
   "(4,4.5]" = "4.0 to 4.5 C",
   "(4.5,Inf]" = "4.5+ C"
 )
+
+# Scenario order for plotting
+
+scenario_order <-
+  c("Baseline",
+    "No Process",
+    "No Historical",
+    "No Paleoclimate",
+    "Baseline + Emergent constraints")

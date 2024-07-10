@@ -104,8 +104,6 @@ facet_order <- c("Baseline",
 Construct plot: 
 
 ```{r}
-colors <- c("#003466", "#00a9cf", "#550307", "#EBCC2A", "#F21A00")
-
 temp_projection_plot <- 
   ggplot(data = subset(warming_projection, 
                        year > 2023)) +
@@ -113,7 +111,7 @@ temp_projection_plot <-
                 y = median, 
                 color = scenario), 
             linewidth = 0.75) +
-  scale_color_manual(values = colors) +
+  scale_color_manual(values = ECS_COLORS) +
   geom_ribbon(aes(x = year, 
                   ymin = ci_5, 
                   ymax = ci_95, 
@@ -128,7 +126,7 @@ temp_projection_plot <-
   #                 color = scenario), 
   #             alpha = 0.2, 
   #             linetype = "blank") +
-  scale_fill_manual(values = colors) +
+  scale_fill_manual(values = ECS_COLORS) +
   labs(x = "Year", 
        y = expression(paste("Future Warming (GSAT) relative to 1995-2014 (", degree, "C)"))) +
   theme_light(base_size = 16) +
@@ -288,6 +286,7 @@ probability_plot
 
 ```
 
+Save the plot:
 ```{r}
 # save the probability plot
 ggsave("figures/fig_NUM_temperature_probability_plot.png", 
@@ -297,5 +296,116 @@ ggsave("figures/fig_NUM_temperature_probability_plot.png",
        height = 8, 
        units = "in", 
        dpi = "print")
+
 ```
+
+# GSAT stats plot
+
+This plot shows the spread, distribution shape and some descriptive statistics of the end-of-century `gsat` metrics.
+
+```{r}
+gsat_metrics <- readRDS("data/weighted_gsat_metrics.RDS")
+
+gsat_metrics_df <- do.call(rbind, gsat_metrics)
+gsat_metrics_df$scenario <- factor(gsat_metrics_df$scenario)
+
+gsat_metrics_stats <- data_summary(gsat_metrics_df)
+
+```
+
+```{r}
+gsat_metrics_df <- recode_scenarios(gsat_metrics_df)
+gsat_metrics_stats <- recode_scenarios(gsat_metrics_stats)
+
+```
+
+Constructing plot:
+```{r}
+gsat_stats_plot <- 
+  ggplot() +
+    geom_jitter(data = gsat_metrics_df, 
+              aes(x = scenario, 
+                  y = metric_result,
+                  color = scenario),
+              stat = "identity",
+              width = 0.20,
+              alpha = 0.1, 
+              size = 0.7) +
+  geom_violin(data = gsat_metrics_df, 
+              aes(x = scenario, 
+                  y = metric_result, 
+                  color = scenario),
+              linewidth = 0.7,
+              alpha = 0.0,
+              trim = FALSE) +
+  geom_errorbar(data = gsat_metrics_stats, 
+                aes(x = scenario, 
+                    y = median, 
+                    ymin = lower, 
+                    ymax = upper, 
+                    color = scenario), 
+                width = 0.2, 
+                linewidth = 0.7) +
+  geom_point(data = gsat_metrics_stats,
+             aes(x = scenario, 
+                 y = median, 
+                 color = scenario), 
+             size = 6) +
+  scale_color_manual(values = ECS_COLORS, name = "ECS configuration") +
+  geom_label(data = gsat_metrics_stats, 
+             aes(x = scenario, 
+                 y = median + 0.2, 
+                 label = paste(round(median, 2), "\n[", round(lower, 2), ",", round(upper, 2), "]")), 
+             size = 3) +
+  labs(y = "Future Warming (GSAT) relative to 1995-2014") +
+  theme_light(base_size = 14) +
+  theme(legend.title = element_text(size = 10),
+        legend.text = element_text(size = 8),
+        legend.position = "inside",
+        legend.position.inside = c(0.15, 0.89),
+        legend.background = element_rect(fill = "white", colour = "lightgrey", linewidth = 0.5, linetype = "solid"),
+        axis.title.x = element_blank(), 
+        axis.text = element_text(size = 12), 
+        axis.text.x = element_blank())
+
+gsat_stats_plot
+```
+
+```{r}
+ggsave("figures/fig_NUM_temperature_metric_distribution.png",
+       gsat_stats_plot,
+       device = "png", 
+       width = 8, 
+       height = 8, 
+       units = "in", 
+       dpi = "print")
+```
+
+
+# Constrained and weighted ECS distribution
+
+This figure is meant to demonstrate the distribution of ECS values that resulted in the temperature projections and temperature probabilities.
+
+The data is built by merging the sampled ECS distributions with the constrained and weighted `gsat` metrics. Here we merge both the ECS values and the RMSE values to the . 
+
+```{r}
+ecs_samples <- readRDS("data/ecs_samples_plot_data.RDS")
+
+ecs_df <- do.call(rbind, ecs_samples)
+row.names(ecs_df) <- NULL
+ecs_df$run_number <- rep(seq(1, 15000), times = 5)
+ecs_df$scenario <- rep(scenario_order, each = 15000)
+
+ecs_plot_df <- merge(gsat_metrics_df, ecs_df, by = c("run_number", "scenario"))
+
+```
+
+# Construct plot:
+
+```{r}
+ecs_dist_plot <- 
+
+
+```
+
 
