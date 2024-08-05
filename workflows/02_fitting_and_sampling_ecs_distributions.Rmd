@@ -46,14 +46,14 @@ The result from the code is a new list (`hyper_param_list`) of estimated `rate` 
 
 We obtain a sample of ECS values for each evidence configuration using the hyper-parameters produced by applying a gamma distribution likelihood fit using the S20 ECS percentiles for each evidence configuration.   
 
-We produce `n = 15000` samples for each of the evidence configurations using `rgamma` with the `shape` and `rate` hyper-parameters stored in `hyper_param_list`.
+We produce `n = 10000` samples for each of the evidence configurations using `rgamma` with the `shape` and `rate` hyper-parameters stored in `hyper_param_list`.
 
 ```{r, results='hide'}
 # set seed for reproducible results
 set.seed(1001)
 
 # set n value - how many ECS samples produced for each evidence configuration
-n = 15000
+n = 10000
 
 # The shape and rate parameters are retrieved from each element (referred to as 'evidence') and 
 # used as inputs for rgamma.

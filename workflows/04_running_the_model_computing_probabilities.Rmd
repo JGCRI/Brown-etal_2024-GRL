@@ -26,7 +26,7 @@ We use the SSP2-4.5 emission scenario to run the model with the perturbed ECS sa
 
 ```{r}
 # read in ecs samples as a list
-ecs_sample_list <- as.list(readRDS("data/ecs_samples_from_gamma_dist.RDS"))
+ecs_sample_list <- readRDS("data/initial_ecs_samples_from_gamma_dist.RDS")
 
 # read in scenario input file (ini)
 ini_245 <- system.file("input/hector_ssp245.ini", package = "hector")
@@ -52,14 +52,14 @@ Matilda works by running Hector multiple times to build a perturbed parameter en
 Parameter sets are generated in Matilda using `generate_params`. We use this function to produce `n` initial parameter sets (`init_params`). In this analysis I do not think I am going to run samples of the other parameters. Instead we can isolate the behavior of Hector to different ECS distributions by using Hector defaults for all parameters aside from ECS.
 
 ```{r, eval=FALSE}
-# # set seed for reproducible result
-# set.seed(123)
-# 
-# # sample size (should match ECS sample)
-# n = 10000
-# 
-# # generate parameters
-# init_params <- generate_params(core = core, draws = n)
+# set seed for reproducible result
+set.seed(123)
+
+# sample size (should match ECS sample)
+n = 10000
+
+# generate parameters
+init_params <- generate_params(core = core, draws = n)
 
 ```
 
@@ -71,18 +71,18 @@ We replace the default generated `ECS` values with the values we sampled from S2
 
 ```{r, eval=FALSE}
 # create a list of parameter data frames based on ECS samples in ecs_sample_list
-# parameter_list <- lapply(ecs_sample_list, function(ECS) {
-#   
-#   # copy init_params
-#   params_no_ecs <- init_params
-#   
-#   # remove the ECS column from the parameter data frame
-#   params_no_ecs$ECS <- NULL
-#   
-#   # add sampled S20 ecs values
-#   cbind(ECS, params_no_ecs)
-#   
-# })
+parameter_list <- lapply(ecs_sample_list, function(ECS) {
+
+  # copy init_params
+  params_no_ecs <- init_params
+
+  # remove the ECS column from the parameter data frame
+  params_no_ecs$ECS <- NULL
+
+  # add sampled S20 ecs values
+  cbind(ECS, params_no_ecs)
+
+})
 
 ```
 
@@ -96,9 +96,9 @@ Parallel computing on the local machine is used to make this process as efficien
 
 ```{r}
 # split the ecs samples into chunks for each 'worker'
-ecs_chunks_by_scenario <- lapply(ecs_sample_list, function(df) {
+parameter_chunks <- lapply(parameter_list, function(df) {
   
-  split(df, 1:100)
+  split(df, 1:1000)
   
 })
 
@@ -109,7 +109,7 @@ detectCores()
 cl <- makeCluster(detectCores() - 1)
 
 # export required functions and objects to run the model
-clusterExport(cl, c("ecs_chunks_by_scenario",
+clusterExport(cl, c("parameter_chunks",
                     "ini_245",
                     "newcore",
                     "reset",
@@ -118,13 +118,13 @@ clusterExport(cl, c("ecs_chunks_by_scenario",
 start_time <- Sys.time()
 
 # run the model with parLapply
-model_result <- parLapply(cl, ecs_chunks_by_scenario, function(evidence_scenario) {
+model_result <- parLapply(cl, parameter_chunks, function(evidence_config) {
   
   # initialize a model core for each loop iteration
   core <- newcore(ini_245)
   
   # run the model for each parameter chunk
-  result_list <- lapply(evidence_scenario, function(chunk) {
+  result_list <- lapply(evidence_config, function(chunk) {
     
     reset(core)
     
@@ -175,12 +175,14 @@ After the model is run, we constrain the ensemble using `gmst`. For this step we
 Create a new criterion using normalized temperature data from the repository used for Indicators of Global Change (submitted to ESSD by Forster et al. 2023).
 
 ```{r}
-# read in normalized temperature data
-temp_hist <- read.csv("data-raw/annual_gmst_normalized.csv", stringsAsFactors = F)
-
-# create a new temperature criterion
-temp_criterion <- new_criterion("gmst", temp_hist$year, temp_hist$value)
+# # read in normalized temperature data
+# temp_hist <- read.csv("data-raw/annual_gmst_normalized.csv", stringsAsFactors = F)
+# 
+# # create a new temperature criterion
+# temp_criterion <- new_criterion("gmst", temp_hist$year, temp_hist$value)
 ```
+
+*This is commented out for now. The reasining is because I want to introduce time-varying error into the analysis. The Forester et al. 2023 data that is available does not have any error associated with it.*
 
 We use this criterion to compute RMSE values for the each of the PPE members. We first isolate `gmst` results for each evidence configuration and then compute RMSE values by calling `rmse_values()`.
 
