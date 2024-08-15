@@ -1,7 +1,7 @@
 ## Preparing GMST data
 ##
 ## This temperature data includes historical temperature anomaly values downloaded
-## on 06/13/2024 from https://github.com/ClimateIndicator/data/blob/main/data/global_mean_temperatures/annual_averages.csv
+## on 08/06/2024 from HadCrut5: [link]
 ##
 ## Full citation:
 
