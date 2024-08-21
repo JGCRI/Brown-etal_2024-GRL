@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Goal 
 
-Produce a figure with the ECS samples. This may serve as a good supplemental figure for the paper to show the distribution shapes for the evidence configurations from S20, based on gamma distirbution assumption. 
+Produce a figure with the ECS samples. This may serve as a good supplemental figure for the paper to show the distribution shapes for the evidence configurations from S20, based on gamma distribution assumption. 
 
 ```{r}
 library(tidyverse)
@@ -35,6 +35,7 @@ ecs_df_S1 <- data.frame(
 # recode evidence configurations for aesthetics
 ecs_df_S1$evidence <- ecs_df_S1$evidence %>%
   recode(
+    IPCC = "IPCC AR6",
     No_Process = "No Process",
     No_Historical = "No Historical",
     No_Paleoclimate = "No Paleoclimate",
@@ -43,6 +44,7 @@ ecs_df_S1$evidence <- ecs_df_S1$evidence %>%
 
 # edit order of the facet panels
 facet_order <- c(
+  "IPCC AR6",
   "Baseline",
   "No Process",
   "No Historical",
@@ -63,18 +65,18 @@ ggplot() +
                alpha = 0.2, 
                bw = 0.3) +
   scale_color_manual(values = 
-                       c("#003466", "#00a9cf", "#550307", "#EBCC2A", "#F21A00"), 
-                     name = "Evidence") +
+                       c("#003466", "#00a9cf", "#BDC881", "#EBCC2A", "#F21A00", "#550307"), 
+                     name = "Configuration") +
   scale_fill_manual(values = 
-                      c("#003466", "#00a9cf", "#550307", "#EBCC2A", "#F21A00"), 
-                    name = "Evidence") +
+                      c("#003466", "#00a9cf",  "#BDC881", "#EBCC2A", "#F21A00", "#550307"), 
+                    name = "Configuration") +
   scale_x_continuous(breaks = seq(from = 0, to = 9, 
                                   by = 1)) +
   labs(x = "Equilibrium Climate Sensitivity Value",
        y = "Densisty") +
   facet_wrap(~ evidence) +
   theme_light() +
-  theme(legend.position = c(0.84,0.25))
+  theme(legend.position = "bottom")
 
 ggsave("figures/S1_fig.png",
        device = "png",
@@ -82,5 +84,9 @@ ggsave("figures/S1_fig.png",
        height = 5,
        units = "in",
        dpi = "print")
+```
+
+```{r}
+ Zissou1Continuous = c("#3A9AB2", "#6FB2C1", "#91BAB6", "#A5C2A3", "#BDC881", "#DCCB4E", "#E3B710", "#E79805", "#EC7A05", "#EF5703", "#F11B00")
 ```
 
