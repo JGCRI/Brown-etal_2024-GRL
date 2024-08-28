@@ -17,7 +17,8 @@ bins_mapping <- c(
 # Scenario order for plotting
 
 scenario_order <-
-  c("Baseline",
+  c("IPCC AR6",
+    "Baseline",
     "No Process",
     "No Historical",
     "No Paleoclimate",

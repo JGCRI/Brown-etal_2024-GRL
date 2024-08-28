@@ -84,9 +84,6 @@ In the data frame `value` contains the unlisted ECS samples from `ecs_sample_lis
 The `evidence` column repeats names of each element in `ecs_sample_list` `n` times. Note: `n` is set to 15,000 for each evidence combination. We remove row names to ensure a clean result.
 
 ```{r}
-# save data for supplemental figure script
-saveRDS(ecs_sample_list, "data/ecs_samples_plot_data.RDS")
-
 ecs_sample_df <- data.frame(
   
   value = unlist(ecs_sample_list),
@@ -116,7 +113,11 @@ Compute comparison of quantile values for the proportions published in the
 
 ```{r}
 
-quantile(ecs_sample_list$No_Paleoclimate$ECS, probs = c(0.05, 0.17, 0.50, 0.83, 0.95))
+quantile(ecs_sample_list$Baseline$ECS, probs = c(0.05,0.50, 0.95))
+quantile(ecs_sample_list$No_Process$ECS, probs = c(0.05,0.50, 0.95))
+quantile(ecs_sample_list$No_Historical$ECS, probs = c(0.05,0.50, 0.95))
+quantile(ecs_sample_list$No_Paleoclimate$ECS, probs = c(0.05,0.50, 0.95))
+quantile(ecs_sample_list$Baseline_Emergent_constraints$ECS, probs = c(0.05,0.50, 0.95))
 
 ```
 
@@ -177,8 +178,8 @@ initial_params <- c(3, 1, 0)
 
 # Perform the optimization
 optimized <- optimx(par = initial_params, 
-                 fn = objective_function, 
-                 method = "L-BFGS-B")
+                    fn = objective_function, 
+                    method = "L-BFGS-B")
 
 # Check the result
 print(optimized)
@@ -195,7 +196,7 @@ After the optimization step we extract the optimal parameters (hyperparameters t
 
 ```{r}
 # Extract the optimal parameters
-optimal_params <- optimized[ , 1:3]
+optimal_params <- optimized[ ,1:3]
 optimal_xi <- optimal_params[1]
 optimal_omega <- optimal_params[2]
 optimal_alpha <- optimal_params[3]
@@ -240,16 +241,21 @@ IPCC_est_df <- data.frame(ECS = data)
 # create histogram with density plot
 ECS_sn <- 
   ggplot(IPCC_est_df) +
-   geom_density(stat = "function", fun = dsn, args = list(xi, omega, alpha), xlim = c(0, 8), color = "black") +
+   geom_density(stat = "function", fun = dsn, args = list(xi, omega, alpha), xlim = c(0, 8), color = "black", linewidth = 0.7) +
   theme_light() +
   scale_x_continuous(limits = c(min(IPCC_est_df$ECS) - 1, max(IPCC_est_df$ECS) + 1),
                      breaks = seq(from =0, to = 8, by = 1))+
   geom_area(stat = "function", fun = dsn, args = list(xi = xi, omega = omega, alpha = alpha),
-            xlim = c(2.0, 5.0), fill = "red", alpha = 0.5) +  # Shade area between 2.0 and 5.0
+            xlim = c(2.0, 5.0), fill = "#F21A00", alpha = 0.5) +  # Shade area between 2.0 and 5.0
   geom_area(stat = "function", fun = dsn, args = list(xi = xi, omega = omega, alpha = alpha),
-            xlim = c(0, 2.0), fill = "grey", alpha = 0.5) +
+            xlim = c(2.6, 3.43), fill = "#F21A00", alpha = 0.7) +
+  # geom_area(stat = "function", fun = dsn, args = list(xi = xi, omega = omega, alpha = alpha),
+  #           xlim = c(0, 2.0), fill = "grey", alpha = 0.5) +
+  # geom_area(stat = "function", fun = dsn, args = list(xi = xi, omega = omega, alpha = alpha),
+  #           xlim = c(5.0, 8.0), fill = "grey", alpha = 0.5) +
   geom_area(stat = "function", fun = dsn, args = list(xi = xi, omega = omega, alpha = alpha),
-            xlim = c(5.0, 8.0), fill = "grey", alpha = 0.5)
+            xlim = c(3.0, 3.01), fill = "black", alpha = 0.5)
+
 
 ECS_sn
 ```
@@ -262,5 +268,9 @@ ecs_sample_list[["IPCC"]] <- IPCC_est_df
 
 # save data for supplemental figure script
 saveRDS(ecs_sample_list, "data/initial_ecs_samples_from_gamma_dist.RDS")
+
+# save data for supplemental figure script
+saveRDS(ecs_sample_list, "data/ecs_samples_plot_data.RDS")
+
 ```
 

@@ -14,12 +14,12 @@ SSP_COLORS <-
   )
 
 ECS_COLORS <-
-  c(
-    "No Historical" = "#003466",
-    "No Process" = "#00a9cf",
-    "No Paleoclimate" = "#550307",
-    "Baseline + Emergent constraints" = "#EBCC2A",
-    "Baseline" = "#F21A00"
+  c("IPCC AR6" = "#003466",
+    "Baseline" =  "#00a9cf",
+    "No Process" = "#BDC881",
+    "No Historical" = "#EBCC2A",
+    "No Paleoclimate" = "#F21A00",
+    "Baseline + Emergent constraints" =  "#550307"
   )
 
 TEMP_PROBABILITY_COLORS <-

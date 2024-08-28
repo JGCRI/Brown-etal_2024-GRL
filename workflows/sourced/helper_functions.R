@@ -1,6 +1,28 @@
 ## Helper functions
 
-# recoding scenario names for the plot
+# Normalizing data to reference period
+normalize_dat <- function(data, ref_start, ref_end) {
+
+  # filter data for the reference period
+  ref_period <- subset(
+    data,
+    Year >= ref_start &
+      Year <= ref_end
+  )
+
+  # calculate mean for the reference period
+  mean_ref_dat <- mean(ref_period$value, na.rm = T)
+
+  # Normalize values by dividing each by the mean_ref_period
+  norm_dat <- data$value / mean_ref_dat
+
+  # return the new data frame
+  return(norm_dat)
+
+}
+
+
+# Recoding scenario names for the plot
 recode_scenarios <- function(data) {
 
   data$scenario <- recode_factor(
