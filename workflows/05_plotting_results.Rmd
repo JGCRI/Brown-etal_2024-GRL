@@ -25,24 +25,14 @@ library(spatstat)
 ```{r}
 gsat_results <- readRDS("data/weighted_gsat_ensemble.RDS")
 
-eoc_gsat <- lapply(names(gsat_results), function(df_name) {
-  
-  data <- gsat_results[[df_name]]
-  
-  data$scenario <- df_name
-  
-  return(data)
-  
-})
+gsat_df <- do.call(rbind, gsat_results)
 
-eoc_gsat_df <- do.call(rbind, eoc_gsat)
-
-ggplot(data = eoc_gsat_df) +
+ggplot(data = gsat_df) +
   geom_line(aes(x = year, 
                 y = value, 
                 group = run_number, 
-                color = mc_weight, 
-                alpha = mc_weight), 
+                color = norm_weight, 
+                alpha = norm_weight), 
             linewidth= 0.05) +
   scale_color_gradient(low = "lightblue", high = "dodgerblue4", name = "Weights") +
   scale_alpha_continuous(range(c(0,1))) +
@@ -65,16 +55,16 @@ Compute the weighted median and confidence intervals.
 
 ```{r}
 # median (CI) warming calculation
-warming_projection <- eoc_gsat_df %>% 
+warming_projection <- gsat_df %>% 
   group_by(year, scenario) %>% 
   summarize(
-    median = weighted.quantile(x = value, w = mc_weight, probs = 0.5), 
-    ci_5 = weighted.quantile(x = value, w = mc_weight, probs = 0.05),
-    ci_16 = weighted.quantile(x = value, w = mc_weight, probs = 0.16), 
-    ci_84 = weighted.quantile(x = value, w = mc_weight, probs = 0.84), 
-    ci_95 = weighted.quantile(x = value, w = mc_weight, probs = 0.95),
-    ci_66 = weighted.quantile(x = value, w = mc_weight, probs = 0.66), 
-    ci_33 = weighted.quantile(x = value, w = mc_weight, probs = 0.33),
+    median = weighted.quantile(x = value, w = norm_weight, probs = 0.5), 
+    ci_5 = weighted.quantile(x = value, w = norm_weight, probs = 0.05),
+    ci_16 = weighted.quantile(x = value, w = norm_weight, probs = 0.16), 
+    ci_84 = weighted.quantile(x = value, w = norm_weight, probs = 0.84), 
+    ci_95 = weighted.quantile(x = value, w = norm_weight, probs = 0.95),
+    ci_66 = weighted.quantile(x = value, w = norm_weight, probs = 0.66), 
+    ci_33 = weighted.quantile(x = value, w = norm_weight, probs = 0.33),
     .groups = "drop")
 
 ```
@@ -144,24 +134,13 @@ temp_projection_plot
 ```
 
 ```{r}
-historic_tas_subset <- subset(eoc_gsat_df, 
+historic_tas_subset <- subset(gsat_df, 
                                 year > 1849 &
                                 year < 2024)
 
-historic_plot_data <- historic_tas_subset %>% 
-  group_by(scenario, year) %>% 
-  summarize(
-    median = weighted.quantile(value, w = mc_weight, probs = 0.5),
-    lower_ci = weighted.quantile(value, w = mc_weight, probs = 0.05),
-    upper_ci = weighted.quantile(value, w = mc_weight, probs = 0.95),
-    .groups = "drop")
-
-```
-
-```{r}
 # recoding scenario names for the plot
-historic_plot_data$scenario <- recode_factor(
-  historic_plot_data$scenario,
+historic_tas_subset$scenario <- recode_factor(
+  historic_tas_subset$scenario,
   Baseline = "Baseline",
   IPCC = "IPCC AR6",
   No_Historical = "No Historical",
@@ -169,18 +148,27 @@ historic_plot_data$scenario <- recode_factor(
   No_Paleoclimate = "No Paleoclimate",
   Baseline_Emergent_constraints = "Baseline + Emergent constraints")
 
+historic_plot_data <- historic_tas_subset %>% 
+  group_by(scenario, year) %>% 
+  summarize(
+    median = weighted.quantile(value, w = norm_weight, probs = 0.5),
+    lower_ci = weighted.quantile(value, w = norm_weight, probs = 0.05),
+    upper_ci = weighted.quantile(value, w = norm_weight, probs = 0.95),
+    .groups = "drop")
 
+```
+
+```{r}
 # Order factor levels for plot facet 
 facet_order <- c("IPCC AR6", 
                  "Baseline",
                  "No Process",
                  "No Historical",
                  "No Paleoclimate",
-                 "Baseline + Emergent constaints")
+                 "Baseline + Emergent constraints")
 
 # convert the evidence configuration to factor with the facet order we want
 historic_plot_data$scenario <- factor(historic_plot_data$scenario, levels = facet_order)
-
 
 # normalize obs historical temperature
 ## normalization function
@@ -202,7 +190,6 @@ data_normalization <- function(data, reference_years) {
 temp_hist <- read.csv("data-raw/annual_gmst_normalized.csv")
 reference_historical <- data_normalization(temp_hist, 1995:2014)
 ```
-
 
 ```{r}
 temp_projection_plot +
@@ -322,14 +309,19 @@ This plot shows the spread, distribution shape and some descriptive statistics o
 
 ```{r}
 ## NEED TO FIX THIS -- NEED TO HAVE NAMES OF THE LISTS CARRY OVER INTO THE ADDED SCENARIO COLUMN
-
 gsat_metrics <- readRDS("data/weighted_gsat_metrics.RDS")
+
+# Add the 'scenario' column to each dataframe in the list
+gsat_metrics <- lapply(names(gsat_metrics), function(scenario_name) {
+  df <- gsat_metrics[[scenario_name]]
+  df$scenario <- scenario_name
+  return(df)
+})
 
 gsat_metrics_df <- do.call(rbind, gsat_metrics)
 gsat_metrics_df$scenario <- factor(gsat_metrics_df$scenario)
 
 gsat_metrics_stats <- data_summary(gsat_metrics_df)
-
 ```
 
 ```{r}
@@ -348,7 +340,7 @@ gsat_stats_plot <-
                   color = scenario),
               stat = "identity",
               width = 0.20,
-              alpha = 0.1, 
+              alpha = 0.05, 
               size = 0.7) +
   geom_violin(data = gsat_metrics_df, 
               aes(x = scenario, 
@@ -364,7 +356,7 @@ gsat_stats_plot <-
                     ymax = upper, 
                     color = scenario), 
                 width = 0.2, 
-                linewidth = 0.7) +
+                linewidth = 0.8) +
   geom_point(data = gsat_metrics_stats,
              aes(x = scenario, 
                  y = median, 
@@ -373,14 +365,14 @@ gsat_stats_plot <-
   scale_color_manual(values = ECS_COLORS, name = "ECS configuration") +
   geom_label(data = gsat_metrics_stats, 
              aes(x = scenario, 
-                 y = median + 0.2, 
+                 y = median + 0.4, 
                  label = paste(round(median, 2), "\n[", round(lower, 2), ",", round(upper, 2), "]")), 
              size = 3) +
   labs(y = "Future Warming (GSAT) relative to 1995-2014") +
   theme_light(base_size = 14) +
   theme(legend.title = element_text(size = 10),
-        legend.text = element_text(size = 8),
-        legend.position = "inside",
+        legend.text = element_text(size = 7),
+        legend.position = "top",
         legend.position.inside = c(0.15, 0.89),
         legend.background = element_rect(fill = "white", colour = "lightgrey", linewidth = 0.5, linetype = "solid"),
         axis.title.x = element_blank(), 
@@ -399,32 +391,4 @@ ggsave("figures/fig_NUM_temperature_metric_distribution.png",
        units = "in", 
        dpi = "print")
 ```
-
-
-# Constrained and weighted ECS distribution
-
-This figure is meant to demonstrate the distribution of ECS values that resulted in the temperature projections and temperature probabilities.
-
-The data is built by merging the sampled ECS distributions with the constrained and weighted `gsat` metrics. Here we merge both the ECS values and the RMSE values to the . 
-
-```{r}
-ecs_samples <- readRDS("data/ecs_samples_plot_data.RDS")
-
-ecs_df <- do.call(rbind, ecs_samples)
-row.names(ecs_df) <- NULL
-ecs_df$run_number <- rep(seq(1, 15000), times = 5)
-ecs_df$scenario <- rep(scenario_order, each = 15000)
-
-ecs_plot_df <- merge(gsat_metrics_df, ecs_df, by = c("run_number", "scenario"))
-
-```
-
-# Construct plot:
-
-```{r}
-ecs_dist_plot <- 
-
-
-```
-
 

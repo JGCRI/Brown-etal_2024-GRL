@@ -235,35 +235,27 @@ gmst_criteria_data <- read.csv("data-raw/gmst_anomaly_hadcrut5.csv")
 gmst_criteria_data$Lower.confidence.limit..2.5.. <- NULL
 gmst_criteria_data$Upper.confidence.limit..97.5.. <- NULL
 gmst_criteria_data <- gmst_criteria_data %>% rename("value" = "Anomaly..deg.C.",
-                                                    "Year" = "Time")
-
-# Normalize anomaly values 
-gmst_criteria_data_normalized <- data.frame(Year = gmst_criteria_data$Year,
-                                            value = normalize_dat(gmst_criteria_data, 
-                                                                  ref_start = 1995, 
-                                                                  ref_end = 2014))
+                                                    "year" = "Time")
 
 # Temperature anomaly error vector
 gmst_error <- read.csv("data-raw/annual_gmst_SD_quant.csv")
-temp_error_vec <- normalize_dat(gmst_error, 
-                                ref_start = 1995, 
-                                ref_end = 2014)
+temp_error_vec <- gmst_error$value
 
-# for plotting merge values with error 
-gmst_criteria_data_normalized$error <- temp_error_vec
+# for plotting add error values to criteria data 
+gmst_criteria_data$error <- gmst_error$value
 ggplot() +
-  geom_line(data = gmst_criteria_data_normalized, 
-            aes(x = Year, 
+  geom_line(data = gmst_criteria_data, 
+            aes(x = year, 
                 y = value)) +
-  geom_ribbon(data = gmst_criteria_data_normalized, 
-              aes(x = Year,           
+  geom_ribbon(data = gmst_criteria_data, 
+              aes(x = year,           
                   ymin = value - error, 
                   ymax = value + error), 
               alpha = 0.2)             
 
 
 # create a new ocean c uptake criterion
-gmst_criterion <- new_criterion("gmst", years = gmst_criteria_data_normalized$Year, obs_values = gmst_criteria_data_normalized$value)
+gmst_criterion <- new_criterion("gmst", years = gmst_criteria_data$year, obs_values = gmst_criteria_data$value)
 
 ```
 
@@ -300,31 +292,34 @@ model_weights <- lapply(model_result, function(df) {
   # produce weights based on ocean carbon uptake
    weights_ocean_uptake = score_runs(df,
                                     criterion = ocean_uptake_criterion,
-                                    score_function = score_bayesian,
-                                    sigma = 1)
+                                    score_function = score_bayesian)
    weights_ocean_uptake = na.omit(weights_ocean_uptake)
 
    # store in a list
    weights_list = list(weights_co2, weights_temp, weights_ocean_uptake)
 
    # compute multi-criteria weights
-   mc_weights = multi_criteria_weighting(weights_list)
+   mc_weights = multi_criteria_weighting(weights_list, c(0.15, 0.8, 0.05))
 
   return(mc_weights)
   
 })
+
+## Check model_weights for names
+names(model_weights)
 ```
 
 ```{r}
-## NOT CURRENTLY CONSTRAINING RESULT BY MINIMUM WEIGHT
+## CURRENTLY TESTING CONSTRAINING RESULT BY MINIMUM WEIGHT
 
-# # filter out ensemble members that do not meet the minimum weight constraint (> 1e-6)
-# constrained_weights <- lapply(model_weights, function(df) {
-# 
-#   filtered_result <- subset(df, mc_weight > 1e-6)
-# 
-#   return(filtered_result)
-#   })
+# filter out ensemble members that do not meet the minimum weight constraint (> 1e-6)
+constrained_weights <- lapply(model_weights, function(df) {
+  
+  filtered_result <- subset(df, mc_weight > 1e-6)
+  
+  return(filtered_result)
+  
+  })
 ```
 
 Constrained weights can be merged with the constrained results. This would produce a list (based on ECS scenario) of the constrained model ensemble and the assigned weights for each run. However, because some of the models have been filtered out during the constraint, need to re-normalize so weights sum to 1. This way we can still use the resulting ensembles to compute metrics and probabilities accurately.
@@ -336,39 +331,44 @@ weighted_ensemble <- Map(function(a, b) {
   
   return(merged)
 
-  }, model_weights, model_result)
+  }, constrained_weights, model_result)
+
+#sanity check names 
+names(weighted_ensemble)
 
 ## ONLY NEEDS TO BE RUN IF RUNS HAVE BEEN FILTERED OUT BY MINIMUM WEIGHT
 ## Re-weight to sum to 1
-# ensemble_normalized <- lapply(names(weighted_ensemble), function(df_name) {
-#   
-#   # make copy of data 
-#   df <- weighted_ensemble[[df_name]]
-#   
-#   # calculate the total weight for unique run_numbers
-#   total_weight <- sum(df$weights[!duplicated(df$run_number)])
-#   
-#   # normalize the weight values
-#   df$weight_normalized <- df$weights / total_weight
-#   
-#   # add "scenario" name
-#   df$scenario <- df_name
-#   
-#   return(df)
-# 
-# })
+norm_weights_ensemble <- lapply(names(weighted_ensemble), function(df_name) {
+
+  # make copy of data
+  df <- weighted_ensemble[[df_name]]
+
+  # calculate the total weight for unique run_numbers
+  total_weight <- sum(df$mc_weight[!duplicated(df$run_number)])
+
+  # normalize the weight values
+  df$norm_weight <- df$mc_weight / total_weight
+
+  # add "scenario" name
+  df$scenario <- df_name
+
+  return(df)
+
+})
+# make sure element names are preserved
+names(norm_weights_ensemble) <- names(weighted_ensemble)
 
 # Verify the final weights sum to 1.0
-sapply(weighted_ensemble, function(df) {
+sapply(norm_weights_ensemble, function(df) {
   
-  sum <- sum(df$mc_weight[!duplicated(df$run_number)])
+  sum <- sum(df$norm_weight[!duplicated(df$run_number)])
 
   print(sum)  
 })
 
 
 # saving as a list does this work?
-saveRDS(weighted_ensemble, "data/weighted_ensemble.RDS")
+saveRDS(norm_weights_ensemble, "data/weighted_ensemble.RDS")
 
 ```
 
@@ -382,7 +382,7 @@ We will compute temperature metrics for 2100 warming relative to 1995-2014 refer
 Normalize temperature to the 1995-2014 reference period. Do this by extracting `global_tas` as warming data then normalize.
 
 ```{r}
-global_tas_data <- lapply(weighted_ensemble, function(df){
+global_tas_data <- lapply(norm_weights_ensemble, function(df){
   
   subset(df,
          variable == "global_tas" 
@@ -393,17 +393,9 @@ global_tas_data <- lapply(weighted_ensemble, function(df){
 gsat_results <- lapply(global_tas_data, function(df){
     
   # Filter data for the reference period
-  reference_period <- subset(df,
-                             year > 1994 &
-                               year < 2015
-                             )
-  
-  # Calculate the mean values of reference period
-  mean_reference_period <- mean(reference_period$value)
-  
-  # Calculate normalized values for each year in the data set
-  ## subtract data values by reference period mean
-  normalized_values <- df$value - mean_reference_period
+  normalized_values <- normalize_dat(df, 
+                                     ref_start = 1995, 
+                                     ref_end = 2014)
   
   # adding this column to each df
   df$value <- normalized_values
@@ -426,10 +418,7 @@ eoc_metric <- new_metric(var = "global_tas", years = 2081:2100, op = median)
 We use the newly defined metric object to compute median 2081-2100 warming for each ECS configuration scenario. Additionally, we add scenario names and merge weights for each model. 
 
 ```{r}
-# Sanity move
-names(gsat_results) <- names(weighted_ensemble)
-
-# build data frame of metric results
+# Build data frame of metric results
 eoc_warming_results <- lapply(gsat_results, function(df){
 
   # compute metrics for each df in the weighted model results list using eoc_warming metric object
@@ -438,25 +427,24 @@ eoc_warming_results <- lapply(gsat_results, function(df){
   return(metric_df)
 })
 
-
 ## TODO what the fuck -- I need to merge the normalized weights but I cant figure out how - last resort is to re-weight for this after merging with `constrained_weights` object.
 ## 
 # Merge with model weights to get a data frame with weighted metrics
 eoc_gsat_metrics <- Map(function(a, b){
   
-  merged <- merge(a, b, by = "run_number")
+  b <- b[!duplicated(b$run_number), ]
   
-  # result <- merge$mc_weight[!duplicated(df$run_number)]
+  merged <- merge(a, b[, c("run_number", "norm_weight")], by = "run_number")
   
   return(merged)
   
-}, eoc_warming_results, model_weights)
+}, eoc_warming_results, norm_weights_ensemble)
 
 # Apply function to calculate and print sum of the specified column
 # Verify the final normalized weights
 sapply(eoc_gsat_metrics, function(df) {
   
-  sum <- sum(df$mc_weight)
+  sum <- sum(df$norm_weight)
 
   print(sum)  
 })
@@ -473,7 +461,6 @@ We compute probabilities using the likelihood weights and the warming metrics pr
 To compute probabilities we call `prob_calc` for each of the data frame in the `weighted_eoc_warming_results` list.
 
 ```{r}
-
 # define bins that represent the warming ranges of interest
 temp_ranges <- c(0, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, Inf)
 
@@ -486,7 +473,7 @@ temp_probability <- lapply(names(eoc_gsat_metrics), function(df_name){
   # run prob_calc
   prob_result <- prob_calc(df$metric_result,
                            bins = temp_ranges,
-                           scores = df$mc_weight)
+                           scores = df$norm_weight)
   
   # add scenario column 
   prob_result$scenario <- df_name
