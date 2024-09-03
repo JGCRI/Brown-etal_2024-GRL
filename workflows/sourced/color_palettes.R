@@ -35,3 +35,10 @@ TEMP_PROBABILITY_COLORS <-
     "4.5+ C" = "#67001F"
   )
 
+ECS_POSTERIOR_COLORS <-
+  c( "#4393C3",
+     "#4393C3",
+     "#4393C3",
+     "#4393C3",
+     "#4393C3",
+     "#4393C3")

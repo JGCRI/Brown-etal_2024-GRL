@@ -55,34 +55,31 @@ data_summary <- function(data){
 
 
 # Computing Kernal Density Estimates
-#
-# kde_values <- function(data, split_by, variable, weights) {
-#
-#   split_df <- split(data, split_by)
-#
-#   density_result <- lapply(names(split_df), function(df_name) {
-#     # store data based on name of the current df
-#     # this way we can add a scenario column to the final results
-#     df <- split_df[[df_name]]
-#
-#     # use that df to compute density estimates weight by `weights`
-#     density_values <- density(variable, weights = weights)
-#
-#     # build data frame with coordinates we want to plot
-#     density_estimate <- data.frame(scenario = df_name,
-#                                    value = density_values$x,
-#                                    density = density_values$y)
-#
-#     return(density_estimate)
-#   })
-#
-#   kde_values_result <- do.call(rbind, density_result)
-#
-#   return(kde_values_result)
-#
-# }
-#
-# kde_test <- kde_values(ecs_plot_df,
-#                        split_by = ecs_plot_df$scenario,
-#                        variable = ecs_plot_df$ECS,
-#                        weights = ecs_plot_df$weight_norm)
+
+kde_values <- function(data, split_by, variable, weights) {
+
+  split_df <- split(data, split_by)
+
+  density_result <- lapply(names(split_df), function(df_name) {
+    # store data based on name of the current df
+    # this way we can add a scenario column to the final results
+    df <- split_df[[df_name]]
+
+    # use that df to compute density estimates weight by `weights`
+    density_values <- density(variable, weights = weights)
+
+    # build data frame with coordinates we want to plot
+    density_estimate <- data.frame(scenario = df_name,
+                                   value = density_values$x,
+                                   density = density_values$y)
+
+    return(density_estimate)
+  })
+
+  kde_values_result <- do.call(rbind, density_result)
+
+  return(kde_values_result)
+
+}
+
+

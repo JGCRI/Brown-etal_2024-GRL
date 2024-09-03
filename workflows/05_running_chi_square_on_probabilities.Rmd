@@ -24,7 +24,7 @@ This analysis requires the `probability_results`. We load this data from the `da
 # load probability data
 options(scipen = 999)
 
-prob_data <- readRDS("data/probability_results.RDS")
+prob_data <- readRDS("data/temp_probability_results.RDS")
 
 prob_data <- do.call(rbind, prob_data) %>% 
   mutate(scenario = factor(scenario),
@@ -100,6 +100,92 @@ ggplot(prob_data, aes(x = temperature_range, y = probability, color = scenario, 
                                 "No_Historical" = "#550307",
                                 "No_Paleoclimate" = "#EBCC2A",
                                 "Baseline_Emergent_constraints" = "#F21A00"))
+```
+
+
+# Testing out KS test
+
+```{r}
+# Load the data
+warming_metrics <- readRDS("data/weighted_gsat_metrics.RDS")
+
+# resampled warming metrics with weights
+resampled_metrics <- lapply(warming_metrics, function(df) {
+  
+  #new samples 
+  new_sample <- sample(df$metric_result, size = 10000, replace = T, prob = df$norm_weght)
+  
+  return(new_sample)
+  
+})
+
+# Extract names of distributions
+names_distributions <- names(warming_metrics)
+
+# Generate all unique pairs of distribution indices and names
+pairs <- combn(seq_along(resampled_metrics), 2, simplify = FALSE)
+
+# Function to compute KS test for a pair of distributions
+compute_ks_test <- function(pair) {
+  # Extract distribution names and data
+  name1 <- names_distributions[pair[1]]
+  name2 <- names_distributions[pair[2]]
+  dist1 <- metric_results[[pair[1]]]
+  dist2 <- metric_results[[pair[2]]]
+  
+  # Perform the KS test
+  ks_results <- ks.test(dist1, dist2)
+  
+  # Return a list with pair names and test results
+  return(list(pair = c(name1, name2), ks_test = ks_results))
+}
+
+# Perform pairwise KS tests
+ks_test_results <- lapply(pairs, compute_ks_test)
+
+# Print results
+print(ks_test_results)
+
+```
+
+```{r}
+Baseline <- data.frame(metric = resampled_metrics$Baseline, scenario = "Baseline")
+IPCC <- data.frame(metric = resampled_metrics$IPCC, scenario = "IPCC")
+No_Process <- data.frame(metric = resampled_metrics$No_Process, scenario = "No_Process")
+No_Historical <- data.frame(metric = resampled_metrics$No_Historical, scenario = "No_Historical")
+No_Paleoclimate <- data.frame(metric = resampled_metrics$No_Paleoclimate, scenario = "No_Paleoclimate")
+baseline_EC <- data.frame(metric = resampled_metrics$Baseline_Emergent_constraints, scenario = "Baseline_Emergent_constraints")
+
+# Combine data
+combined_data <- rbind(Baseline, IPCC, No_Process, No_Historical, No_Paleoclimate, baseline_EC)
+
+# recoding scenario names for the plot
+cdf_df <- recode_scenarios(combined_data)
+
+# Order factor levels for plot 
+scenario_order <- 
+  c("IPCC AR6",
+    "Baseline",
+    "No Process",
+    "No Historical",
+    "No Paleoclimate",
+    "Baseline + Emergent constraints")
+
+# Plot CDFs
+CDF_temp <- ggplot(cdf_df, 
+                   aes(x = metric, color = scenario)) +
+  stat_ecdf(geom = "step", size = 1) +
+  scale_color_manual(values = ECS_COLORS) +
+  labs(title = "CDFs of Two Distributions", x = "Value", y = "CDF") +
+  theme_light()
+
+ggsave("figures/cdf_figure.png",
+       CDF_temp,
+       device = "png", 
+       width = 12, 
+       height = 8, 
+       units = "in", 
+       dpi = "print")
 ```
 
 

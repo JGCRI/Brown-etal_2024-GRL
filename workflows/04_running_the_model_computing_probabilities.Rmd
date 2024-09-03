@@ -307,6 +307,9 @@ model_weights <- lapply(model_result, function(df) {
 
 ## Check model_weights for names
 names(model_weights)
+
+## model_weights before culling constraint
+saveRDS(model_weights, "data/pre_culled_model_weights.RDS")
 ```
 
 ```{r}

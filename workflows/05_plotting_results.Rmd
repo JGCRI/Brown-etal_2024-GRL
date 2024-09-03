@@ -192,13 +192,14 @@ reference_historical <- data_normalization(temp_hist, 1995:2014)
 ```
 
 ```{r}
-temp_projection_plot +
+warming_projection_plot <- 
+  temp_projection_plot +
     geom_point(data = reference_historical, 
              aes(x = year, 
                  y = value), 
              color = "black", 
              size = 0.3) + 
-  geom_line(data = historic_plot_data, 
+  geom_line(data = reference_historical, 
             aes(x = year, 
                 y = median), 
             color = "#92397a",
@@ -211,7 +212,8 @@ temp_projection_plot +
               alpha = 0.2)
 
 
-ggsave("figures/temp_constrained_warming_projections.png",
+ggsave("figures/fig_NUM_temp_warming_projections.png",
+       warming_projection_plot,
        device = "png", 
        units = "in",
        width = 10,
@@ -390,5 +392,265 @@ ggsave("figures/fig_NUM_temperature_metric_distribution.png",
        height = 8, 
        units = "in", 
        dpi = "print")
+```
+
+# Plotting ECS posterior distributions
+
+Combine ECS samples with model weights:
+```{r}
+# Bring in ECS values
+ecs_values <- readRDS("data/ecs_samples_plot_data.RDS")
+
+# Add run_number column
+ecs_priors <- lapply(ecs_values, function(df){
+  
+  df$run_number <- 1:10000
+
+  return(df)
+  
+  })
+
+# Bring in model_weights
+model_weights <- readRDS("data/pre_culled_model_weights.RDS")
+
+# Merge model weights with ECS priors using run_number
+weighted_ECS <- Map(function(a, b){
+  
+  data_merge <- merge(a, b, by = "run_number")
+  
+  return(data_merge)
+  
+  }, ecs_priors, model_weights)
+
+```
+
+Constrain weighted_ECS and "re-weight" to match the weighted_ensemble:
+```{r}
+constrained_ecs_weights <- lapply(weighted_ECS, function(df) {
+  
+  filtered_result <- subset(df, mc_weight > 1e-6)
+  
+  return(filtered_result)
+  
+  })
+
+# normalize weights
+norm_weighted_ECS <- lapply(names(constrained_ecs_weights), function(df_name) {
+
+  # make copy of data
+  df <- constrained_ecs_weights[[df_name]]
+
+  # calculate the total weight for unique run_numbers
+  total_weight <- sum(df$mc_weight[!duplicated(df$run_number)])
+
+  # normalize the weight values
+  df$norm_weight <- df$mc_weight / total_weight
+
+  # add "scenario" name
+  df$scenario <- df_name
+
+  return(df)
+
+})
+
+# check to ensure weights sum to 1
+sapply(norm_weighted_ECS, function(df) {
+  
+  sum <- sum(df$norm_weight[!duplicated(df$run_number)])
+
+  print(sum)  
+  
+})
+
+names(norm_weighted_ECS) <- names(constrained_ecs_weights)
+```
+
+Computing kde_values:
+```{r}
+# use lapply to loop across data frames in scenario_list to compute KDE values for each
+kde_values <- lapply(names(norm_weighted_ECS), function(df_name){
+  
+  df <- norm_weighted_ECS[[df_name]]
+  
+  # use that df to compute density estimates weight by `weights`
+  density_values <- density(df$ECS, weights = df$norm_weight, bw = 0.5)
+  
+  # build data frame with coordinates we want to plot
+  density_estimate <- data.frame(scenario = df_name,
+                                  value = density_values$x,
+                                  density = density_values$y)
+  
+  return(density_estimate)
+})
+
+# binding df for plotting
+kde_df <- do.call(rbind, kde_values)
+```
+
+Now we can construct the plots:
+
+```{r}
+# recoding scenario names for the plot
+kde_df$scenario <- recode_factor(
+  kde_df$scenario,
+  IPCC = "IPCC AR6",
+  Baseline = "Baseline",
+  No_Historical = "No Historical",
+  No_Process = "No Process",
+  No_Paleoclimate = "No Paleoclimate",
+  Baseline_Emergent_constraints = "Baseline + Emergent constraints")
+
+# Order factor levels for plot 
+scenario_order <- 
+  c("IPCC AR6",
+    "Baseline",
+    "No Process",
+    "No Historical",
+    "No Paleoclimate",
+    "Baseline + Emergent constraints")
+
+# outlining desired breaks
+breaks <- c(0, 2.0, 2.5, 4.0, 5.0, Inf)
+
+# legend lables
+legend_labels <- c("0 to 2.0 C",
+                   "2.0 to 2.5 C",
+                   "2.5 to 4.0 C",
+                   "4.0 to 5.0 C",
+                   "5.0+ C")
+
+# create intervals and assign colors
+kde_df$interval <- cut(kde_df$value, 
+                       breaks = breaks, 
+                       include.lowest = TRUE, 
+                       right = TRUE)
+
+kde_df$alpha <- case_when(
+  kde_df$interval == "[0,2]" ~ 0.3,  # Low likelihood (more transparent)
+  kde_df$interval == "(2,2.5]" ~ 0.8, # Very likely
+  kde_df$interval == "(2.5,4]" ~ 1.0, # Likely
+  kde_df$interval == "(4,5]" ~ 0.8,   # Very likely
+  kde_df$interval == "(5,Inf]" ~ 0.3, # Low likelihood (more transparent)
+)
+
+
+```
+
+Plot:
+```{r}
+ECS_posterior <- 
+  ggplot(kde_df, 
+         aes(x = value, 
+             y = density,
+             fill = interval,
+             alpha = alpha)) +
+  geom_area(color = "darkgrey") +
+  scale_fill_manual(values = ECS_POSTERIOR_COLORS, 
+                    labels = legend_labels, 
+                    name = "ECS values") +
+  scale_alpha_identity() +
+  scale_x_continuous(breaks = seq(0, 9, by = 1), # set the scale and labels of the x-axis
+                     limits = c(0, 9), # set x-axis limits
+                     expand = c(0, 0.1)) + # limit white space
+  labs(x = "ECS (C)", 
+       y = "Density") +
+  theme_light() +
+  theme(legend.position = "none") + 
+  facet_wrap(~scenario)
+ECS_posterior
+
+```
+
+```{r}
+ggsave("figures/fig_NUM_ECS_posterior_distribution.png",
+       ECS_posterior,
+       device = "png", 
+       width = 16, 
+       height = 8, 
+       units = "in", 
+       dpi = "print")
+```
+
+# 
+```{r}
+norm_weighted_ecs_df <- do.call(rbind, norm_weighted_ECS)
+
+ecs_data_summary <- function(data){
+
+  ecs_stats <-
+    data %>%
+    group_by(scenario) %>%
+    summarize(
+      median = weighted.quantile(ECS, w = norm_weight, probs = 0.5),
+      vlikely_lower = weighted.quantile(ECS, w = norm_weight, probs = 0.05),
+      likely_lower = weighted.quantile(ECS, w = norm_weight, probs = 0.33), 
+      likely_upper = weighted.quantile(ECS, w = norm_weight, probs = 0.66),
+      vlikely_upper = weighted.quantile(ECS, w = norm_weight, probs = 0.95),
+      .groups = "drop")
+
+  return(ecs_stats)
+
+}
+
+ecs_stats <- ecs_data_summary(norm_weighted_ecs_df)
+```
+
+```{r}
+norm_weighted_ecs_df <- recode_scenarios(norm_weighted_ecs_df)
+norm_weighted_ecs_df <- recode_scenarios(norm_weighted_ecs_df)
+
+ecs_stats <- recode_scenarios(ecs_stats)
+```
+
+Constructing plot:
+```{r}
+ecs_stats_plot <- 
+  ggplot() +
+    geom_jitter(data = norm_weighted_ecs_df, 
+              aes(x = scenario, 
+                  y = ECS,
+                  color = scenario),
+              stat = "identity",
+              width = 0.20,
+              alpha = 0.05, 
+              size = 0.7) +
+  geom_violin(data = norm_weighted_ecs_df, 
+              aes(x = scenario, 
+                  y = ECS, 
+                  color = scenario),
+              linewidth = 0.7,
+              alpha = 0.0,
+              trim = FALSE) +
+  geom_errorbar(data = ecs_stats, 
+                aes(x = scenario, 
+                    y = median, 
+                    ymin = likely_lower, 
+                    ymax = likely_upper, 
+                    color = scenario), 
+                width = 0.2, 
+                linewidth = 0.8) +
+  geom_point(data = ecs_stats,
+             aes(x = scenario, 
+                 y = median, 
+                 color = scenario), 
+             size = 6) +
+  scale_color_manual(values = ECS_COLORS, name = "ECS configuration") +
+  geom_label(data = ecs_stats, 
+             aes(x = scenario, 
+                 y = median + 0.4, 
+                 label = paste(round(median, 2), "\n[", round(vlikely_lower, 2), ",", round(vlikely_upper, 2), "]")), 
+             size = 3) +
+  labs(y = "Weighted ECS Distributions (C)") +
+  theme_light(base_size = 14) +
+  theme(legend.title = element_text(size = 10),
+        legend.text = element_text(size = 7),
+        legend.position = "top",
+        legend.position.inside = c(0.15, 0.89),
+        legend.background = element_rect(fill = "white", colour = "lightgrey", linewidth = 0.5, linetype = "solid"),
+        axis.title.x = element_blank(), 
+        axis.text = element_text(size = 12), 
+        axis.text.x = element_blank())
+
+ecs_stats_plot
 ```
 
