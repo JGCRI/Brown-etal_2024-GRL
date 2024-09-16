@@ -10,7 +10,7 @@ SSP_COLORS <-
     "ssp460" = "#b0724e",
     "ssp585" = "#980002",
     "historical" = "#000000",
-    "historical" = "#92397a"
+    "historical_estimated" = "#92397a"
   )
 
 ECS_COLORS <-

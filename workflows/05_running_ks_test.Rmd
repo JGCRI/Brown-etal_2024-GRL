@@ -110,12 +110,12 @@ ggplot(prob_data, aes(x = temperature_range, y = probability, color = scenario, 
 warming_metrics <- readRDS("data/weighted_gsat_metrics.RDS")
 
 # resampled warming metrics with weights
-resampled_metrics <- lapply(warming_metrics, function(df) {
+metric_values <- lapply(warming_metrics, function(df) {
   
-  #new samples 
-  new_sample <- sample(df$metric_result, size = 10000, replace = T, prob = df$norm_weght)
+  # extract values 
+  sample <- df$metric_result
   
-  return(new_sample)
+  return(sample)
   
 })
 
@@ -123,15 +123,15 @@ resampled_metrics <- lapply(warming_metrics, function(df) {
 names_distributions <- names(warming_metrics)
 
 # Generate all unique pairs of distribution indices and names
-pairs <- combn(seq_along(resampled_metrics), 2, simplify = FALSE)
+pairs <- combn(seq_along(metric_values), 2, simplify = FALSE)
 
 # Function to compute KS test for a pair of distributions
 compute_ks_test <- function(pair) {
   # Extract distribution names and data
   name1 <- names_distributions[pair[1]]
   name2 <- names_distributions[pair[2]]
-  dist1 <- metric_results[[pair[1]]]
-  dist2 <- metric_results[[pair[2]]]
+  dist1 <- metric_values[[pair[1]]]
+  dist2 <- metric_values[[pair[2]]]
   
   # Perform the KS test
   ks_results <- ks.test(dist1, dist2)
@@ -146,15 +146,16 @@ ks_test_results <- lapply(pairs, compute_ks_test)
 # Print results
 print(ks_test_results)
 
+
 ```
 
 ```{r}
-Baseline <- data.frame(metric = resampled_metrics$Baseline, scenario = "Baseline")
-IPCC <- data.frame(metric = resampled_metrics$IPCC, scenario = "IPCC")
-No_Process <- data.frame(metric = resampled_metrics$No_Process, scenario = "No_Process")
-No_Historical <- data.frame(metric = resampled_metrics$No_Historical, scenario = "No_Historical")
-No_Paleoclimate <- data.frame(metric = resampled_metrics$No_Paleoclimate, scenario = "No_Paleoclimate")
-baseline_EC <- data.frame(metric = resampled_metrics$Baseline_Emergent_constraints, scenario = "Baseline_Emergent_constraints")
+Baseline <- data.frame(metric = metric_values$Baseline, scenario = "Baseline")
+IPCC <- data.frame(metric = metric_values$IPCC, scenario = "IPCC")
+No_Process <- data.frame(metric = metric_values$No_Process, scenario = "No_Process")
+No_Historical <- data.frame(metric = metric_values$No_Historical, scenario = "No_Historical")
+No_Paleoclimate <- data.frame(metric = metric_values$No_Paleoclimate, scenario = "No_Paleoclimate")
+baseline_EC <- data.frame(metric = metric_values$Baseline_Emergent_constraints, scenario = "Baseline_Emergent_constraints")
 
 # Combine data
 combined_data <- rbind(Baseline, IPCC, No_Process, No_Historical, No_Paleoclimate, baseline_EC)
@@ -174,10 +175,12 @@ scenario_order <-
 # Plot CDFs
 CDF_temp <- ggplot(cdf_df, 
                    aes(x = metric, color = scenario)) +
-  stat_ecdf(geom = "step", size = 1) +
-  scale_color_manual(values = ECS_COLORS) +
-  labs(title = "CDFs of Two Distributions", x = "Value", y = "CDF") +
-  theme_light()
+  geom_line(stat = "ecdf", linewidth = 0.6) +
+  scale_color_manual(values = ECS_COLORS, name = "ECS configurations") +
+  labs(x = "Future Warming (GSAT) relative to 1995-2014", y = "Cumulative Density") +
+  theme_light(base_size = 16) +
+  theme(axis.title = element_text(size = 20))
+CDF_temp
 
 ggsave("figures/cdf_figure.png",
        CDF_temp,

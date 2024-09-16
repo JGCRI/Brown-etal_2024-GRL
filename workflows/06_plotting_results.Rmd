@@ -18,6 +18,13 @@ library(matilda)
 library(tidyverse)
 library(MASS)
 library(spatstat)
+library(ggpubr)
+
+sourced_files <- c("sourced/color_palettes.R", 
+                   "sourced/helper_functions.R", 
+                   "sourced/mapping.R")
+lapply(sourced_files, source)
+
 ```
 
 # Weighted ensemble
@@ -27,7 +34,10 @@ gsat_results <- readRDS("data/weighted_gsat_ensemble.RDS")
 
 gsat_df <- do.call(rbind, gsat_results)
 
-ggplot(data = gsat_df) +
+gsat_plot_data <- recode_scenarios(gsat_df)
+gsat_plot_data$scenario <- factor(gsat_plot_data$scenario, levels = scenario_order)
+
+ggplot(data = gsat_plot_data) +
   geom_line(aes(x = year, 
                 y = value, 
                 group = run_number, 
@@ -73,28 +83,10 @@ Plotting temperature projections:
 
 ```{r}
 # recoding scenario names for the plot
-warming_projection$scenario <- warming_projection$scenario %>%
-  recode(
-    IPCC = "IPCC AR6",
-    No_Process = "No Process",
-    No_Historical = "No Historical",
-    No_Paleoclimate = "No Paleoclimate",
-    Baseline_Emergent_constraints = "Baseline + Emergent constraints"
-  )
-
-
-# Order factor levels for plot facet 
-facet_order <- c(
-  "IPCC AR6",
-  "Baseline",
-  "No Process",
-  "No Historical",
-  "No Paleoclimate",
-  "Baseline + Emergent constraints"
-)
+warming_projection_data <- recode_scenarios(warming_projection)
 
 # convert the evidence configuration to factor with the facet order we want
-warming_projection$scenario <- factor(warming_projection$scenario, levels = facet_order)
+warming_projection$scenario <- factor(warming_projection$scenario, levels = scenario_order)
 
 ```
 
@@ -102,7 +94,7 @@ Construct plot:
 
 ```{r}
 temp_projection_plot <- 
-  ggplot(data = subset(warming_projection, 
+  ggplot(data = subset(warming_projection_data, 
                        year > 2023)) +
   geom_line(aes(x = year, 
                 y = median, 
@@ -126,9 +118,16 @@ temp_projection_plot <-
   scale_fill_manual(values = ECS_COLORS) +
   labs(x = "Year", 
        y = expression(paste("Future Warming (GSAT) relative to 1995-2014 (", degree, "C)"))) +
-  theme_light(base_size = 16) +
-  theme(legend.position = "none") +
-  facet_wrap(~ scenario)
+    facet_wrap(~scenario) +
+  theme_light(base_size = 18) +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size = 16, angle = 35)) +
+  theme(axis.text = element_text(size = 16), 
+        axis.text.x = element_text(size = 16, vjust = 0.9),
+        axis.title.x = element_text(size = 20), 
+        axis.title.y = element_text(size = 20), 
+        strip.text = element_text(size = 18, color = "black"), 
+        strip.background = element_rect(fill = "white"))
 
 temp_projection_plot
 ```
@@ -139,16 +138,9 @@ historic_tas_subset <- subset(gsat_df,
                                 year < 2024)
 
 # recoding scenario names for the plot
-historic_tas_subset$scenario <- recode_factor(
-  historic_tas_subset$scenario,
-  Baseline = "Baseline",
-  IPCC = "IPCC AR6",
-  No_Historical = "No Historical",
-  No_Process = "No Process",
-  No_Paleoclimate = "No Paleoclimate",
-  Baseline_Emergent_constraints = "Baseline + Emergent constraints")
+historic_tas <- recode_scenarios(historic_tas_subset)
 
-historic_plot_data <- historic_tas_subset %>% 
+historic_plot_data <- historic_tas %>% 
   group_by(scenario, year) %>% 
   summarize(
     median = weighted.quantile(value, w = norm_weight, probs = 0.5),
@@ -159,16 +151,8 @@ historic_plot_data <- historic_tas_subset %>%
 ```
 
 ```{r}
-# Order factor levels for plot facet 
-facet_order <- c("IPCC AR6", 
-                 "Baseline",
-                 "No Process",
-                 "No Historical",
-                 "No Paleoclimate",
-                 "Baseline + Emergent constraints")
-
 # convert the evidence configuration to factor with the facet order we want
-historic_plot_data$scenario <- factor(historic_plot_data$scenario, levels = facet_order)
+historic_plot_data$scenario <- factor(historic_plot_data$scenario, levels = scenario_order)
 
 # normalize obs historical temperature
 ## normalization function
@@ -197,18 +181,18 @@ warming_projection_plot <-
     geom_point(data = reference_historical, 
              aes(x = year, 
                  y = value), 
-             color = "black", 
+             color = SSP_COLORS[[8]], 
              size = 0.3) + 
-  geom_line(data = reference_historical, 
+  geom_line(data = historic_plot_data, 
             aes(x = year, 
                 y = median), 
-            color = "#92397a",
+            color = SSP_COLORS[[9]],
             linewidth = 0.7) +
   geom_ribbon(data = historic_plot_data, 
               aes(x = year, 
                   ymin = lower_ci, 
                   ymax = upper_ci), 
-              fill = "#92397a",
+              fill = SSP_COLORS[[9]],
               alpha = 0.2)
 
 
@@ -216,8 +200,8 @@ ggsave("figures/fig_NUM_temp_warming_projections.png",
        warming_projection_plot,
        device = "png", 
        units = "in",
-       width = 10,
-       height = 8,
+       width = 15,
+       height = 10,
        dpi = "print")
 ```
 
@@ -241,27 +225,21 @@ temp_probability_df[is.na(temp_probability_df)] <- 0
 
 ```{r}
 # recoding scenario names for the plot
-temp_probability_df$scenario <- recode_factor(
-  temp_probability_df$scenario,
-  IPCC = "IPCC AR6",
-  Baseline = "Baseline",
-  No_Historical = "No Historical",
-  No_Process = "No Process",
-  No_Paleoclimate = "No Paleoclimate",
-  Baseline_Emergent_constraints = "Baseline + Emergent constraints")
+temp_prob_plot_data <- recode_scenarios(temp_probability_df)
 
-# Order factor levels for plot 
-scenario_order <- 
-  c("IPCC AR6",
-    "Baseline",
-    "No Process",
-    "No Historical",
-    "No Paleoclimate",
-    "Baseline + Emergent constraints")
+# probability scerio order
+prob_scenario_order <- c(
+  "Baseline + Emergent constraints",
+  "No Paleoclimate",
+  "No Process",
+  "No Historical", 
+  "Baseline", 
+  "IPCC AR6"
+)
 
 # order factor levels
-temp_probability_df$scenario <- factor(temp_probability_df$scenario, 
-                                       levels = scenario_order)
+temp_prob_plot_data$scenario <- factor(temp_prob_plot_data$scenario, 
+                                       levels = prob_scenario_order)
 ```
 
 The `bang bang bang` operator (`!!!`) expands vectors/lists into individual arguments. Here, this operator allows us to replace the `bins` factor levels according to the vectors in `bins_mapping`. 
@@ -269,7 +247,7 @@ The `bang bang bang` operator (`!!!`) expands vectors/lists into individual argu
 Constructing plot:
 ```{r}
 probability_plot <- 
-  ggplot(data = temp_probability_df, 
+  ggplot(data = temp_prob_plot_data, 
          aes(fill = bins, 
              x = scenario, 
              y = probability)) +
@@ -284,9 +262,11 @@ probability_plot <-
   labs(y = "Probability", 
        x = NULL) +
   coord_flip() +
-  theme_light(base_size = 16) +
+  theme_light(base_size = 20) +
   theme(legend.position = "bottom", 
-        axis.text = element_text(size = 14))
+        axis.text = element_text(size = 16), 
+        axis.text.x = element_text(size = 16),
+        legend.text = element_text(size = 16))
 
 probability_plot
 
@@ -298,8 +278,8 @@ Save the plot:
 ggsave("figures/fig_NUM_temperature_probability_plot.png", 
        probability_plot, 
        device = "png", 
-       width = 12,
-       height = 8, 
+       width = 14,
+       height = 7, 
        units = "in", 
        dpi = "print")
 
@@ -336,20 +316,21 @@ Constructing plot:
 ```{r}
 gsat_stats_plot <- 
   ggplot() +
-    geom_jitter(data = gsat_metrics_df, 
-              aes(x = scenario, 
-                  y = metric_result,
-                  color = scenario),
-              stat = "identity",
-              width = 0.20,
-              alpha = 0.05, 
-              size = 0.7) +
+    # geom_jitter(data = gsat_metrics_df, 
+    #           aes(x = scenario, 
+    #               y = metric_result,
+    #               color = scenario),
+    #           stat = "identity",
+    #           width = 0.20,
+    #           alpha = 0.05, 
+    #           size = 0.7) +
   geom_violin(data = gsat_metrics_df, 
               aes(x = scenario, 
                   y = metric_result, 
-                  color = scenario),
+                  color = scenario, 
+                  fill = scenario),
               linewidth = 0.7,
-              alpha = 0.0,
+              alpha = 0.1,
               trim = FALSE) +
   geom_errorbar(data = gsat_metrics_stats, 
                 aes(x = scenario, 
@@ -364,22 +345,25 @@ gsat_stats_plot <-
                  y = median, 
                  color = scenario), 
              size = 6) +
-  scale_color_manual(values = ECS_COLORS, name = "ECS configuration") +
+  scale_color_manual(values = ECS_COLORS, name = "ECS configuration", guide = "none") +
+  scale_fill_manual(values = ECS_COLORS, guide = "none") +
+  ylim(0, 6.2) +
   geom_label(data = gsat_metrics_stats, 
              aes(x = scenario, 
-                 y = median + 0.4, 
+                 y = upper + 0.5, 
                  label = paste(round(median, 2), "\n[", round(lower, 2), ",", round(upper, 2), "]")), 
-             size = 3) +
-  labs(y = "Future Warming (GSAT) relative to 1995-2014") +
-  theme_light(base_size = 14) +
-  theme(legend.title = element_text(size = 10),
-        legend.text = element_text(size = 7),
-        legend.position = "top",
-        legend.position.inside = c(0.15, 0.89),
-        legend.background = element_rect(fill = "white", colour = "lightgrey", linewidth = 0.5, linetype = "solid"),
-        axis.title.x = element_blank(), 
-        axis.text = element_text(size = 12), 
-        axis.text.x = element_blank())
+             size = 4) +
+  # labs(y = "Future Warming (GSAT) relative to 1995-2014") +
+  theme_light(base_size = 16) +
+  # theme(legend.title = element_text(size = 12),
+  #       legend.text = element_text(size = 1),
+  #       legend.position = "top",
+  #       legend.position.inside = c(0.15, 0.89),
+  #       legend.background = element_rect(fill = "white", colour = "lightgrey", linewidth = 0.5, linetype = "solid"),
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 35, vjust = 1.05, hjust = 1),
+        axis.text = element_text(size = 14))
 
 gsat_stats_plot
 ```
@@ -388,8 +372,23 @@ gsat_stats_plot
 ggsave("figures/fig_NUM_temperature_metric_distribution.png",
        gsat_stats_plot,
        device = "png", 
-       width = 8, 
-       height = 8, 
+       width = 7, 
+       height = 6, 
+       units = "in", 
+       dpi = "print")
+```
+
+Adding `warming_projection_plot` and `gsat_stats_plot` to the same panelled figure:
+```{r}
+combined_temp_plot <- ggarrange(warming_projection_plot, gsat_stats_plot, labels = c("A", "B"), ncol = 2, nrow = 1, widths = c(2, 1.2))
+
+combined_temp_plot
+
+ggsave("figures/fig_NUM_temperature_combined.png",
+       combined_temp_plot,
+       device = "png", 
+       width = 20, 
+       height = 9, 
        units = "in", 
        dpi = "print")
 ```
@@ -491,24 +490,8 @@ Now we can construct the plots:
 
 ```{r}
 # recoding scenario names for the plot
-kde_df$scenario <- recode_factor(
-  kde_df$scenario,
-  IPCC = "IPCC AR6",
-  Baseline = "Baseline",
-  No_Historical = "No Historical",
-  No_Process = "No Process",
-  No_Paleoclimate = "No Paleoclimate",
-  Baseline_Emergent_constraints = "Baseline + Emergent constraints")
-
-# Order factor levels for plot 
-scenario_order <- 
-  c("IPCC AR6",
-    "Baseline",
-    "No Process",
-    "No Historical",
-    "No Paleoclimate",
-    "Baseline + Emergent constraints")
-
+kde_data <- recode_scenarios(kde_df)
+  
 # outlining desired breaks
 breaks <- c(0, 2.0, 2.5, 4.0, 5.0, Inf)
 
@@ -554,9 +537,12 @@ ECS_posterior <-
                      expand = c(0, 0.1)) + # limit white space
   labs(x = "ECS (C)", 
        y = "Density") +
-  theme_light() +
-  theme(legend.position = "none") + 
-  facet_wrap(~scenario)
+  facet_wrap(~scenario) +
+  theme_light(base_size = 18) +
+  theme(legend.position = "none",
+        axis.title.y = element_text(size = 18), 
+        axis.title.x = element_text(size = 18), 
+        strip.text = element_text(size = 14)) +
 ECS_posterior
 
 ```
@@ -641,14 +627,14 @@ ecs_stats_plot <-
                  label = paste(round(median, 2), "\n[", round(vlikely_lower, 2), ",", round(vlikely_upper, 2), "]")), 
              size = 3) +
   labs(y = "Weighted ECS Distributions (C)") +
-  theme_light(base_size = 14) +
-  theme(legend.title = element_text(size = 10),
-        legend.text = element_text(size = 7),
+  theme_light(base_size = 18) +
+  theme(legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
         legend.position = "top",
         legend.position.inside = c(0.15, 0.89),
         legend.background = element_rect(fill = "white", colour = "lightgrey", linewidth = 0.5, linetype = "solid"),
         axis.title.x = element_blank(), 
-        axis.text = element_text(size = 12), 
+        axis.text = element_text(size = 14), 
         axis.text.x = element_blank())
 
 ecs_stats_plot
