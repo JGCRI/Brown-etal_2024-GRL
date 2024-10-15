@@ -9,101 +9,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Goal
 
-The goal of this script is to run a chi-squared test to determine if there is an association between ECS scenario and the likelihood of specific temperature ranges. For example, this can inform whether one ECS configuration leads to a higher likelihood of warming by a given temperature range compared to another ECS configuration. In this analysis, high chi-squared values (significant p-value) suggest that certain ECS configurations influence the likelihood of the temperature range outcome. Conversely, low chi-square statistic (non-significant p-value) suggests there is not enough evidence to conclude that ECS configuration affects the likelihood of a particular warming range. Thus, this analysis can help discern whether ECS configurations have a notable impact on projected temperature outcomes and how the ECS parameter affects future temperature projections.
+The goal of this script is to run a KS test to determine if there is a significant difference among all temperature distributions for data computed using each ECS configuration.
 
 ```{r}
 library(reshape2)
 library(tidyverse)
 ```
 
-# Data
-
-This analysis requires the `probability_results`. We load this data from the `data` directory.
-
-```{r}
-# load probability data
-options(scipen = 999)
-
-prob_data <- readRDS("data/temp_probability_results.RDS")
-
-prob_data <- do.call(rbind, prob_data) %>% 
-  mutate(scenario = factor(scenario),
-         probability = probability * 100) %>% 
-  rename(temperature_range = "bins")
-
-```
-
-Upon loading the data we remove `rownames` and convert `scenario` to a factor.
-
-# Run Chi-square test
-
-H0: There is no significant association between ECS configurations and the likelihood of different end-of-century warming ranges. The probability of temperature ranges is independent of the ECS range.
-
-H1: There is a significant association between ECS configurations and the likelihood of different end-of-century warming ranges. Certain ECS configurations influence the likelihood of certain end-of-century warming occurring. 
-
-```{r}
-# Reshape the data into a contingency table format
-contingency_table <- dcast(prob_data, 
-                           temperature_range ~ scenario, 
-                           value.var = "probability")
-contingency_table[is.na(contingency_table)] <- 0
-
-# Compute chi-squared results
-result2 <- chisq.test(contingency_table[-1])
-
-# split the data by temperature range 
-table_split <- split(contingency_table, 
-                     contingency_table$temperature_range)
-
-# Run chi-square test on each temperature range
-result <- lapply(table_split, function(table) {
-  
-  # Isolate the probability values in the contingency table
-  values <- table[-1]
-  
-  # Compute chi-squared results
-  result <- chisq.test(values)
-  
-  # Build a results data frame
-  stats <- data.frame(X.squared = result$statistic,
-                      df = result$parameter,
-                      p.value_chi = result$p.value)
-  
-  return(stats)
-})
-
-stats_table <- do.call(rbind, result)
-
-```
-
-The warning produced is concerning. Probably due to the way I am using chi-squared test (splitting the contingency table). The only time the analysis does not produce the warning is when I don't divide into temperature ranges and simulate p-value. The result is largely uninformative I would say. Tells us that likelihood of certain warming ranges are not impacted by ECS configuration, only on that is close to significant is warming range of 3.5-4 C, where `No_Paleoclimate` may be associated with a higher likelihood of occurrence. 
-
-```{r}
-# Visualize the data with a bar plot
-library(ggplot2)
-
-# Assuming your data is named 'df'
-# Reshape the data from wide to long format
-df_long <- pivot_longer(contingency_table, -temperature_range, names_to = "scenario", values_to = "probability")
-
-# Create the bar plot
-ggplot(prob_data, aes(x = temperature_range, y = probability, color = scenario, group = scenario)) +
-  geom_point(size = 3)+
-  geom_line(linewidth = 0.7) +
-  labs(title = "Probability Distribution by Scenario",
-       x = "Warming Range (C)",
-       y = "Probability") +
-  theme_light() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  scale_color_manual(values = c("Baseline" = "#003466", 
-                                "No_Process" = "#00a9cf",
-                                "No_Historical" = "#550307",
-                                "No_Paleoclimate" = "#EBCC2A",
-                                "Baseline_Emergent_constraints" = "#F21A00"))
-```
-
-
-# Testing out KS test
+# Run KS test 
 
 ```{r}
 # Load the data
@@ -148,6 +61,7 @@ print(ks_test_results)
 
 
 ```
+# Plot CDF curves to visualize differences in distributions 
 
 ```{r}
 Baseline <- data.frame(metric = metric_values$Baseline, scenario = "Baseline")
@@ -174,16 +88,23 @@ scenario_order <-
 
 # Plot CDFs
 CDF_temp <- ggplot(cdf_df, 
-                   aes(x = metric, color = scenario)) +
-  geom_line(stat = "ecdf", linewidth = 0.6) +
+                   aes(x = metric, 
+                       color = scenario, 
+                       linetype = scenario)) +
+  geom_line(stat = "ecdf", 
+            linewidth = 1,) +
   scale_color_manual(values = ECS_COLORS, name = "ECS configurations") +
+  scale_linetype_manual(values = LINE_TYPE, guide = "none") +
   labs(x = "Future Warming (GSAT) relative to 1995-2014", y = "Cumulative Density") +
   theme_light(base_size = 16) +
   theme(axis.title = element_text(size = 20))
 CDF_temp
 
-ggsave("figures/cdf_figure.png",
-       CDF_temp,
+CDF_fig <- CDF_temp + guides(color = guide_legend(override.aes = list(color = ECS_COLORS, 
+                                                                      linetype = LINE_TYPE)))
+
+ggsave("figures/fig_4_CDF.png",
+       CDF_fig,
        device = "png", 
        width = 12, 
        height = 8, 

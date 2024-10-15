@@ -46,8 +46,8 @@ ecs_df_S1$evidence <- ecs_df_S1$evidence %>%
 facet_order <- c(
   "IPCC AR6",
   "Baseline",
-  "No Process",
   "No Historical",
+  "No Process",
   "No Paleoclimate",
   "Baseline + Emergent constraints"
 )
@@ -64,12 +64,10 @@ ggplot() +
                linewidth = 0.75, 
                alpha = 0.2, 
                bw = 0.3) +
-  scale_color_manual(values = 
-                       c("#003466", "#00a9cf", "#BDC881", "#EBCC2A", "#F21A00", "#550307"), 
-                     name = "Configuration") +
-  scale_fill_manual(values = 
-                      c("#003466", "#00a9cf",  "#BDC881", "#EBCC2A", "#F21A00", "#550307"), 
-                    name = "Configuration") +
+  scale_color_manual(values = ECS_COLORS, 
+                     name = "ECS Configurations") +
+  scale_fill_manual(values = ECS_COLORS, 
+                    name = "ECS Configurations") +
   scale_x_continuous(breaks = seq(from = 0, to = 9, 
                                   by = 1)) +
   labs(x = "Equilibrium Climate Sensitivity Value",
@@ -78,15 +76,10 @@ ggplot() +
   theme_light() +
   theme(legend.position = "bottom")
 
-ggsave("figures/S1_fig.png",
+ggsave("figures/S1_fig_ECS_distributions.png",
        device = "png",
        width = 7,
        height = 5,
        units = "in",
        dpi = "print")
 ```
-
-```{r}
- Zissou1Continuous = c("#3A9AB2", "#6FB2C1", "#91BAB6", "#A5C2A3", "#BDC881", "#DCCB4E", "#E3B710", "#E79805", "#EC7A05", "#EF5703", "#F11B00")
-```
-

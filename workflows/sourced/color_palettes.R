@@ -42,3 +42,11 @@ ECS_POSTERIOR_COLORS <-
      "#4393C3",
      "#4393C3",
      "#4393C3")
+
+LINE_TYPE <-
+  c("solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "dotdash")

@@ -51,7 +51,7 @@ ggplot(data = gsat_plot_data) +
   guides(alpha = "none") +
   facet_wrap(~ scenario)
   
-ggsave("figures/S2_fig_gsat_ensemble.png",
+ggsave("figures/S1_fig_gsat_ensemble.png",
        device = "png",
        width = 28,
        height = 15,
@@ -108,13 +108,6 @@ temp_projection_plot <-
                   color = scenario), 
               alpha = 0.3, 
               linetype = "blank") +
-  # geom_ribbon(aes(x = year, 
-  #                 ymin = ci_16, 
-  #                 ymax = ci_84, 
-  #                 fill = scenario, 
-  #                 color = scenario), 
-  #             alpha = 0.2, 
-  #             linetype = "blank") +
   scale_fill_manual(values = ECS_COLORS) +
   labs(x = "Year", 
        y = expression(paste("Future Warming (GSAT) relative to 1995-2014 (", degree, "C)"))) +
@@ -131,7 +124,7 @@ temp_projection_plot <-
 
 temp_projection_plot
 ```
-
+Subset data for historical period:
 ```{r}
 historic_tas_subset <- subset(gsat_df, 
                                 year > 1849 &
@@ -150,6 +143,7 @@ historic_plot_data <- historic_tas %>%
 
 ```
 
+Normalize historical temperature to reference period:
 ```{r}
 # convert the evidence configuration to factor with the facet order we want
 historic_plot_data$scenario <- factor(historic_plot_data$scenario, levels = scenario_order)
@@ -175,6 +169,7 @@ temp_hist <- read.csv("data-raw/annual_gmst_normalized.csv")
 reference_historical <- data_normalization(temp_hist, 1995:2014)
 ```
 
+Plot temperature projection median line with ribbon for uncertainty range:
 ```{r}
 warming_projection_plot <- 
   temp_projection_plot +
@@ -196,7 +191,7 @@ warming_projection_plot <-
               alpha = 0.2)
 
 
-ggsave("figures/fig_NUM_temp_warming_projections.png",
+ggsave("figures/fig_3a_temp_warming_projections.png",
        warming_projection_plot,
        device = "png", 
        units = "in",
@@ -275,7 +270,7 @@ probability_plot
 Save the plot:
 ```{r}
 # save the probability plot
-ggsave("figures/fig_NUM_temperature_probability_plot.png", 
+ggsave("figures/fig_5_temperature_probability_plot.png", 
        probability_plot, 
        device = "png", 
        width = 14,
@@ -290,7 +285,6 @@ ggsave("figures/fig_NUM_temperature_probability_plot.png",
 This plot shows the spread, distribution shape and some descriptive statistics of the end-of-century `gsat` metrics.
 
 ```{r}
-## NEED TO FIX THIS -- NEED TO HAVE NAMES OF THE LISTS CARRY OVER INTO THE ADDED SCENARIO COLUMN
 gsat_metrics <- readRDS("data/weighted_gsat_metrics.RDS")
 
 # Add the 'scenario' column to each dataframe in the list
@@ -304,6 +298,7 @@ gsat_metrics_df <- do.call(rbind, gsat_metrics)
 gsat_metrics_df$scenario <- factor(gsat_metrics_df$scenario)
 
 gsat_metrics_stats <- data_summary(gsat_metrics_df)
+
 ```
 
 ```{r}
@@ -316,14 +311,6 @@ Constructing plot:
 ```{r}
 gsat_stats_plot <- 
   ggplot() +
-    # geom_jitter(data = gsat_metrics_df, 
-    #           aes(x = scenario, 
-    #               y = metric_result,
-    #               color = scenario),
-    #           stat = "identity",
-    #           width = 0.20,
-    #           alpha = 0.05, 
-    #           size = 0.7) +
   geom_violin(data = gsat_metrics_df, 
               aes(x = scenario, 
                   y = metric_result, 
@@ -353,13 +340,7 @@ gsat_stats_plot <-
                  y = upper + 0.5, 
                  label = paste(round(median, 2), "\n[", round(lower, 2), ",", round(upper, 2), "]")), 
              size = 4) +
-  # labs(y = "Future Warming (GSAT) relative to 1995-2014") +
   theme_light(base_size = 16) +
-  # theme(legend.title = element_text(size = 12),
-  #       legend.text = element_text(size = 1),
-  #       legend.position = "top",
-  #       legend.position.inside = c(0.15, 0.89),
-  #       legend.background = element_rect(fill = "white", colour = "lightgrey", linewidth = 0.5, linetype = "solid"),
   theme(axis.title.y = element_blank(),
         axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 35, vjust = 1.05, hjust = 1),
@@ -369,7 +350,7 @@ gsat_stats_plot
 ```
 
 ```{r}
-ggsave("figures/fig_NUM_temperature_metric_distribution.png",
+ggsave("figures/fig_3b_temperature_metric_distribution.png",
        gsat_stats_plot,
        device = "png", 
        width = 7, 
@@ -378,13 +359,13 @@ ggsave("figures/fig_NUM_temperature_metric_distribution.png",
        dpi = "print")
 ```
 
-Adding `warming_projection_plot` and `gsat_stats_plot` to the same panelled figure:
+Adding `warming_projection_plot` and `gsat_stats_plot` to the same paneled figure:
 ```{r}
 combined_temp_plot <- ggarrange(warming_projection_plot, gsat_stats_plot, labels = c("A", "B"), ncol = 2, nrow = 1, widths = c(2, 1.2))
 
 combined_temp_plot
 
-ggsave("figures/fig_NUM_temperature_combined.png",
+ggsave("figures/fig_3_temperature_combined.png",
        combined_temp_plot,
        device = "png", 
        width = 20, 
@@ -548,7 +529,7 @@ ECS_posterior
 ```
 
 ```{r}
-ggsave("figures/fig_NUM_ECS_posterior_distribution.png",
+ggsave("figures/fig_2_ECS_posterior_distribution.png",
        ECS_posterior,
        device = "png", 
        width = 16, 
@@ -557,7 +538,8 @@ ggsave("figures/fig_NUM_ECS_posterior_distribution.png",
        dpi = "print")
 ```
 
-# 
+# EXTRA PLOT -- Posterior ECS distirbutions
+
 ```{r}
 norm_weighted_ecs_df <- do.call(rbind, norm_weighted_ECS)
 
