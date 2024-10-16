@@ -52,7 +52,7 @@ recode_scenarios <- function(data) {
 
   data$scenario <- recode_factor(
     data$scenario,
-    IPCC = "IPCC AR6",
+    IPCC = "IPCC AR6*",
     Baseline = "Baseline",
     No_Historical = "No Historical",
     No_Process = "No Process",

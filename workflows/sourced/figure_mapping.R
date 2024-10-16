@@ -17,7 +17,7 @@ bins_mapping <- c(
 # Mapping to change scenario order for plotting
 
 scenario_order <-
-  c("IPCC AR6",
+  c("IPCC AR6*",
     "Baseline",
     "No Process",
     "No Historical",
@@ -27,7 +27,7 @@ scenario_order <-
 # Mapping for ECS configuration colors
 
 ECS_COLORS <-
-  c("IPCC AR6" = "#003466",
+  c("IPCC AR6*" = "#003466",
     "Baseline" =  "#00a9cf",
     "No Process" = "#BDC881",
     "No Historical" = "#EBCC2A",

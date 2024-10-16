@@ -11,9 +11,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Produce a figure with the ECS samples. This may serve as a good supplemental figure for the paper to show the distribution shapes for the evidence configurations from S20, based on gamma distribution assumption. 
 
-```{r}
-library(tidyverse)
-```
 # Produce figure
 
 We produce PDF curves in a panel using the color palette and then save the figure in the `figures` directory.
@@ -74,7 +71,9 @@ ggplot() +
        y = "Densisty") +
   facet_wrap(~ evidence) +
   theme_light() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom",
+        strip.text = element_text(size = 10, color = "black"), 
+        strip.background = element_rect(fill = "white"))
 
 ggsave("figures/S1_fig_ECS_distributions.png",
        device = "png",
