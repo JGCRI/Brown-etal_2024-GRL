@@ -79,6 +79,20 @@ data_summary <- function(data){
 
 }
 
+# Function to compute KS test for a pair of distributions
+compute_ks_test <- function(pair) {
+  # Extract distribution names and data
+  name1 <- names_distributions[pair[1]]
+  name2 <- names_distributions[pair[2]]
+  dist1 <- metric_values[[pair[1]]]
+  dist2 <- metric_values[[pair[2]]]
+
+  # Perform the KS test
+  ks_results <- ks.test(dist1, dist2)
+
+  # Return a list with pair names and test results
+  return(list(pair = c(name1, name2), ks_test = ks_results))
+}
 
 # Computing Kernal Density Estimates
 
