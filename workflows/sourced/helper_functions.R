@@ -63,6 +63,29 @@ normalize_dat <- function(data, ref_start, ref_end) {
   return(norm_dat)
 }
 
+# Normalizing historical temperature data
+#' Title
+#'
+#' @param data
+#' @param reference_years
+#'
+#' @return
+#' @export
+#'
+#' @examples
+normalize_historical <- function(data, reference_years) {
+
+    reference_data <- data[data$year %in% reference_years, ]
+
+    mean_reference_period <- mean(reference_data$value)
+
+    normalize_values <- data$value - mean_reference_period
+
+    data$value <- normalize_values
+
+    return(data)
+
+  }
 
 # Recoding scenario names for the plot
 #' Title

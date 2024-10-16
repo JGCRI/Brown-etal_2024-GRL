@@ -24,6 +24,26 @@ scenario_order <-
     "No Paleoclimate",
     "Baseline + Emergent constraints")
 
+prob_scenario_order <-
+  c("Baseline + Emergent constraints",
+    "No Paleoclimate",
+    "No Process",
+    "No Historical",
+    "Baseline",
+    "IPCC AR6*")
+
+# Mapping for SSP colors
+
+SSP_COLORS <- c("ssp119" = "#00a9cf",
+                "ssp126" = "#003466",
+                "ssp245" = "#f69320",
+                "ssp370" = "#df0000",
+                "ssp434" = "#2274ae",
+                "ssp460" = "#b0724e",
+                "ssp585"= "#980002",
+                "historical_point" = "#000000",
+                "historical"="#92397a")
+
 # Mapping for ECS configuration colors
 
 ECS_COLORS <-
