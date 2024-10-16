@@ -24,52 +24,35 @@ ecs_sample_list <- readRDS("data/ecs_samples_plot_data.RDS")
 ecs_df_S1 <- data.frame(
   
   value = unlist(ecs_sample_list),
-  evidence = rep(names(ecs_sample_list), each = n),
+  scenario = rep(names(ecs_sample_list), each = n),
   row.names = NULL
   
 )
 
 # recode evidence configurations for aesthetics
-ecs_df_S1$evidence <- ecs_df_S1$evidence %>%
-  recode(
-    IPCC = "IPCC AR6",
-    No_Process = "No Process",
-    No_Historical = "No Historical",
-    No_Paleoclimate = "No Paleoclimate",
-    Baseline_Emergent_constraints = "Baseline + Emergent constraints"
-  )
-
-# edit order of the facet panels
-facet_order <- c(
-  "IPCC AR6",
-  "Baseline",
-  "No Historical",
-  "No Process",
-  "No Paleoclimate",
-  "Baseline + Emergent constraints"
-)
+ecs_df_S1_fig_data <- recode_scenarios(ecs_df_S1)
 
 # convert the evidence configuration to factor with the facet order we want
-ecs_df_S1$evidence <- factor(ecs_df_S1$evidence, levels = facet_order)
+ecs_df_S1_fig_data$scenario <- factor(ecs_df_S1_fig_data$scenario, levels = scenario_order)
 
 # plot with ggplot"
 ggplot() +
-  geom_density(data = ecs_df_S1,
+  geom_density(data = ecs_df_S1_fig_data,
                aes(x = value, 
-                   color = evidence,
-                   fill = evidence),
+                   color = scenario,
+                   fill = scenario),
                linewidth = 0.75, 
                alpha = 0.2, 
                bw = 0.3) +
   scale_color_manual(values = ECS_COLORS, 
-                     name = "ECS Configurations") +
+                     guide = "none") +
   scale_fill_manual(values = ECS_COLORS, 
-                    name = "ECS Configurations") +
+                    guide = "none") +
   scale_x_continuous(breaks = seq(from = 0, to = 9, 
                                   by = 1)) +
   labs(x = "Equilibrium Climate Sensitivity Value",
-       y = "Densisty") +
-  facet_wrap(~ evidence) +
+       y = "Density") +
+  facet_wrap(~ scenario) +
   theme_light() +
   theme(legend.position = "bottom",
         strip.text = element_text(size = 10, color = "black"), 
