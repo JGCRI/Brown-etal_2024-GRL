@@ -2,6 +2,8 @@
 
 # load libraries
 library(matilda)
+options(matilda.verbose = FALSE)
+library(parallel)
 library(tidyverse)
 library(spatstat)
 library(MASS)
