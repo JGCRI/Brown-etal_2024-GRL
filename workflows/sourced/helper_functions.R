@@ -1,7 +1,14 @@
-
 ## Helper functions
 
 # Objective function to find the optimal xi, omega, and alpha
+#' Title
+#'
+#' @param params
+#'
+#' @return
+#' @export
+#'
+#' @examples
 objective_function <- function(params) {
   xi <- params[1]
   omega <- params[2]
@@ -27,6 +34,16 @@ objective_function <- function(params) {
 }
 
 # Normalizing data to reference period
+#' Title
+#'
+#' @param data
+#' @param ref_start
+#' @param ref_end
+#'
+#' @return
+#' @export
+#'
+#' @examples
 normalize_dat <- function(data, ref_start, ref_end) {
 
   # Filter data for the reference period
@@ -48,6 +65,14 @@ normalize_dat <- function(data, ref_start, ref_end) {
 
 
 # Recoding scenario names for the plot
+#' Title
+#'
+#' @param data
+#'
+#' @return
+#' @export
+#'
+#' @examples
 recode_scenarios <- function(data) {
 
   data$scenario <- recode_factor(
@@ -64,6 +89,14 @@ recode_scenarios <- function(data) {
 
 # Compute data summary (median and 5-95% CI)
 
+#' Title
+#'
+#' @param data
+#'
+#' @return
+#' @export
+#'
+#' @examples
 data_summary <- function(data){
 
   gsat_metric_stats <-
@@ -80,6 +113,14 @@ data_summary <- function(data){
 }
 
 # Function to compute KS test for a pair of distributions
+#' Title
+#'
+#' @param pair
+#'
+#' @return
+#' @export
+#'
+#' @examples
 compute_ks_test <- function(pair) {
   # Extract distribution names and data
   name1 <- names_distributions[pair[1]]
@@ -96,6 +137,17 @@ compute_ks_test <- function(pair) {
 
 # Computing Kernal Density Estimates
 
+#' Title
+#'
+#' @param data
+#' @param split_by
+#' @param variable
+#' @param weights
+#'
+#' @return
+#' @export
+#'
+#' @examples
 kde_values <- function(data, split_by, variable, weights) {
 
   split_df <- split(data, split_by)

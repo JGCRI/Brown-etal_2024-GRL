@@ -279,6 +279,10 @@ weighted_ensemble <- Map(function(a, b) {
 
   }, constrained_weights, model_result)
 
+```
+
+Sanity check to ensure names are correct and re-weighted ensemble sums to 1.0:
+```{r}
 #sanity check names 
 names(weighted_ensemble)
 
