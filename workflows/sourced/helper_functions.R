@@ -1,6 +1,30 @@
-library(tidyverse)
 
 ## Helper functions
+
+# Objective function to find the optimal xi, omega, and alpha
+objective_function <- function(params) {
+  xi <- params[1]
+  omega <- params[2]
+  alpha <- params[3]
+
+  # Calculate the quantiles for the given parameters
+  q5 <- qsn(0.05, xi = xi, omega = omega, alpha = alpha)
+  q50 <- qsn(0.50, xi = xi, omega = omega, alpha = alpha)
+  q95 <- qsn(0.95, xi = xi, omega = omega, alpha = alpha)
+
+  # Desired quantiles
+  desired_q5 <- 2.0
+  desired_q50 <- 3.0
+  desired_q95 <- 5.0
+
+  # Calculate the squared differences
+  error <- (q5 - desired_q5)^2 + (q50 - desired_q50)^2 + (q95 - desired_q95)^2
+
+  # Print intermediate values for debugging
+  cat("xi:", xi, "omega:", omega, "alpha:", alpha, "error:", error, "\n")
+
+  return(error)
+}
 
 # Normalizing data to reference period
 normalize_dat <- function(data, ref_start, ref_end) {
