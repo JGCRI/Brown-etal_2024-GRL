@@ -11,13 +11,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The goal of this script is to run Matilda with each of the ECS distributions we sampled prior. 
 
-```{r}
-library(matilda)
-options(matilda.verbose = FALSE)
-library(parallel)
-library(tidyverse)
-```
-
 # Using ECS samples to run Matilda
 
 We use ECS values sampled from the estimated parametric distributions from S20 to propagate the varying levels of uncertainty associated with evidence configurations to probabilistic climate projections. This provides an opportunity to better understand how different ECS evidence configurations affect temperature trajectories from a simple carbon cycle climate model. 
@@ -44,8 +37,6 @@ core <- newcore(ini_245)
 The result will be a new core object that can will be a required input to run the model. 
 
 # Generate values for other model parameters
-
-**This needs to be edited** I think for this experiment it will be more straight forward to keep all parameters aside from ECS fixed. This will reduce the complexity that is introduced from parameter interactions and will isolate the affect of the ECS distributions from different ECS evidence configurations. Below are notes that will be edited accordingly and the code chunk in this section will be skipped.
 
 Matilda works by running Hector multiple times to build a perturbed parameter ensemble, thus applying parameter uncertainty to model outputs. We need to produce parameter values to accompany the ECS values we sampled in previous steps of the workflow.
 
@@ -182,7 +173,11 @@ gmst_criteria_data <- gmst_criteria_data %>% rename("value" = "Anomaly..deg.C.",
 # Temperature anomaly error vector
 gmst_error <- read.csv("data-raw/annual_gmst_SD_quant.csv")
 temp_error_vec <- gmst_error$value
+```
 
+Plot temperature data with time varying uncertainty error as a sanity check:
+
+```{r}
 # for plotting add error values to criteria data 
 gmst_criteria_data$error <- gmst_error$value
 ggplot() +
@@ -195,11 +190,16 @@ ggplot() +
                   ymax = value + error), 
               alpha = 0.2)             
 
+```
 
-# create a new ocean c uptake criterion
+Create new temperature criterion:
+```{r}
+# create a GMST criterion
 gmst_criterion <- new_criterion("gmst", years = gmst_criteria_data$year, obs_values = gmst_criteria_data$value)
 
 ```
+
+*The Matilda provided gmst criterion only uses a time frame 1961-2023. We create the new criterion to use the timeframe of 1850-2024.* 
 
 Create criterion using ocean carbon uptake from the Global Carbon Project:
 
@@ -253,10 +253,10 @@ names(model_weights)
 ## model_weights before culling constraint
 saveRDS(model_weights, "data/pre_culled_model_weights.RDS")
 ```
-Filter out ensemble members with near-zero weight:
-```{r}
-## CURRENTLY TESTING CONSTRAINING RESULT BY MINIMUM WEIGHT
 
+Filter out ensemble members with near-zero weight:
+
+```{r}
 # filter out ensemble members that do not meet the minimum weight constraint (> 1e-6)
 constrained_weights <- lapply(model_weights, function(df) {
   
@@ -265,6 +265,7 @@ constrained_weights <- lapply(model_weights, function(df) {
   return(filtered_result)
   
   })
+
 ```
 
 Constrained weights can be merged with the constrained results. This would produce a list (based on ECS scenario) of the constrained model ensemble and the assigned weights for each run. However, because some of the models have been filtered out during the constraint, need to re-normalize so weights sum to 1. This way we can still use the resulting ensembles to compute metrics and probabilities accurately.
@@ -278,6 +279,10 @@ weighted_ensemble <- Map(function(a, b) {
 
   }, constrained_weights, model_result)
 
+```
+
+Sanity check to ensure names are correct and re-weighted ensemble sums to 1.0:
+```{r}
 #sanity check names 
 names(weighted_ensemble)
 
@@ -299,6 +304,10 @@ norm_weights_ensemble <- lapply(names(weighted_ensemble), function(df_name) {
   return(df)
 
 })
+```
+
+Sanity check that element names are preserved and final weights sum to 1.0:
+```{r}
 # make sure element names are preserved
 names(norm_weights_ensemble) <- names(weighted_ensemble)
 
@@ -309,9 +318,10 @@ sapply(norm_weights_ensemble, function(df) {
 
   print(sum)  
 })
+```
 
-
-# saving as a list does this work?
+```{r}
+# saver normalized weighted ensemble
 saveRDS(norm_weights_ensemble, "data/weighted_ensemble.RDS")
 
 ```
@@ -381,6 +391,10 @@ eoc_gsat_metrics <- Map(function(a, b){
   
 }, eoc_warming_results, norm_weights_ensemble)
 
+```
+
+Sanity check to verify the normaized metric weights sum to 1.0:
+```{r}
 # Apply function to calculate and print sum of the specified column
 # Verify the final normalized weights
 sapply(eoc_gsat_metrics, function(df) {
@@ -390,6 +404,10 @@ sapply(eoc_gsat_metrics, function(df) {
   print(sum)  
 })
 
+```
+
+Save weighted metric data:
+```{r}
 # save the result for future visualization
 saveRDS(eoc_gsat_metrics, "data/weighted_gsat_metrics.RDS")
 

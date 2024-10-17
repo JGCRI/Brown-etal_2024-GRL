@@ -13,27 +13,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The goal of this script is to produce figures to visualize results of ECS evidence analysis.
 
-```{r, message=FALSE}
-library(matilda)
-library(tidyverse)
-library(MASS)
-library(spatstat)
-library(ggpubr)
-
-sourced_files <- c("sourced/color_palettes.R", 
-                   "sourced/helper_functions.R", 
-                   "sourced/mapping.R")
-lapply(sourced_files, source)
-
-```
-
 # Weighted ensemble
 
 ```{r}
+# load weighted ensemble data
 gsat_results <- readRDS("data/weighted_gsat_ensemble.RDS")
 
+# combine results into a data frame for plotting
 gsat_df <- do.call(rbind, gsat_results)
 
+# Re-code scenario names, factorize and order factor levels by `scenario_order`
 gsat_plot_data <- recode_scenarios(gsat_df)
 gsat_plot_data$scenario <- factor(gsat_plot_data$scenario, levels = scenario_order)
 
@@ -46,12 +35,17 @@ ggplot(data = gsat_plot_data) +
             linewidth= 0.05) +
   scale_color_gradient(low = "lightblue", high = "dodgerblue4", name = "Weights") +
   scale_alpha_continuous(range(c(0,1))) +
-  labs(x = "Years", y = "Temp") +
+  labs(x = "Years", y = expression(paste("Global Temperature Anomaly relative to 1995-2014 (", degree, "C)"))) +
   theme_light() +
   guides(alpha = "none") +
-  facet_wrap(~ scenario)
+  facet_wrap(~ scenario) +
+  theme(strip.text = element_text(size = 12, color = "black"), 
+        strip.background = element_rect(fill = "white"), 
+        axis.text = element_text(size = 12), 
+        axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 14))
   
-ggsave("figures/S1_fig_gsat_ensemble.png",
+ggsave("figures/S2_fig_gsat_ensemble.png",
        device = "png",
        width = 28,
        height = 15,
@@ -79,7 +73,7 @@ warming_projection <- gsat_df %>%
 
 ```
 
-Plotting temperature projections:
+Editing data for plotting temperature projections:
 
 ```{r}
 # recoding scenario names for the plot
@@ -148,25 +142,9 @@ Normalize historical temperature to reference period:
 # convert the evidence configuration to factor with the facet order we want
 historic_plot_data$scenario <- factor(historic_plot_data$scenario, levels = scenario_order)
 
-# normalize obs historical temperature
-## normalization function
-data_normalization <- function(data, reference_years) {
-  
-  reference_data <- data[data$year %in% reference_years, ]
-  
-  mean_reference_period <- mean(reference_data$value)
-  
-  normalize_values <- data$value - mean_reference_period
-  
-  data$value <- normalize_values
-  
-  return(data)
-  
-}
-
 # normalizing historical data to the reference period
 temp_hist <- read.csv("data-raw/annual_gmst_normalized.csv")
-reference_historical <- data_normalization(temp_hist, 1995:2014)
+reference_historical <- normalize_historical(temp_hist, 1995:2014)
 ```
 
 Plot temperature projection median line with ribbon for uncertainty range:
@@ -221,16 +199,6 @@ temp_probability_df[is.na(temp_probability_df)] <- 0
 ```{r}
 # recoding scenario names for the plot
 temp_prob_plot_data <- recode_scenarios(temp_probability_df)
-
-# probability scerio order
-prob_scenario_order <- c(
-  "Baseline + Emergent constraints",
-  "No Paleoclimate",
-  "No Process",
-  "No Historical", 
-  "Baseline", 
-  "IPCC AR6"
-)
 
 # order factor levels
 temp_prob_plot_data$scenario <- factor(temp_prob_plot_data$scenario, 
@@ -467,11 +435,13 @@ kde_values <- lapply(names(norm_weighted_ECS), function(df_name){
 kde_df <- do.call(rbind, kde_values)
 ```
 
-Now we can construct the plots:
+Now we can construct the plots. First we need to define breaks we want to represent to define the shading of intervals in the plot:
 
 ```{r}
 # recoding scenario names for the plot
 kde_data <- recode_scenarios(kde_df)
+
+# order scenario levels
   
 # outlining desired breaks
 breaks <- c(0, 2.0, 2.5, 4.0, 5.0, Inf)
@@ -503,7 +473,7 @@ kde_df$alpha <- case_when(
 Plot:
 ```{r}
 ECS_posterior <- 
-  ggplot(kde_df, 
+  ggplot(kde_data, 
          aes(x = value, 
              y = density,
              fill = interval,
@@ -516,14 +486,15 @@ ECS_posterior <-
   scale_x_continuous(breaks = seq(0, 9, by = 1), # set the scale and labels of the x-axis
                      limits = c(0, 9), # set x-axis limits
                      expand = c(0, 0.1)) + # limit white space
-  labs(x = "ECS (C)", 
+  labs(x = expression(paste("Equilibrium Climate Sensitivity (", degree, "C)")), 
        y = "Density") +
   facet_wrap(~scenario) +
   theme_light(base_size = 18) +
   theme(legend.position = "none",
-        axis.title.y = element_text(size = 18), 
-        axis.title.x = element_text(size = 18), 
-        strip.text = element_text(size = 14)) +
+        axis.title.y = element_text(size = 22), 
+        axis.title.x = element_text(size = 22), 
+        strip.text = element_text(size = 20, color = "black"), 
+        strip.background = element_rect(fill = "white"))
 ECS_posterior
 
 ```

@@ -11,11 +11,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The goal of this script is to run a KS test to determine if there is a significant difference among all temperature distributions for data computed using each ECS configuration.
 
-```{r}
-library(reshape2)
-library(tidyverse)
-```
-
 # Run KS test 
 
 ```{r}
@@ -38,34 +33,19 @@ names_distributions <- names(warming_metrics)
 # Generate all unique pairs of distribution indices and names
 pairs <- combn(seq_along(metric_values), 2, simplify = FALSE)
 
-# Function to compute KS test for a pair of distributions
-compute_ks_test <- function(pair) {
-  # Extract distribution names and data
-  name1 <- names_distributions[pair[1]]
-  name2 <- names_distributions[pair[2]]
-  dist1 <- metric_values[[pair[1]]]
-  dist2 <- metric_values[[pair[2]]]
-  
-  # Perform the KS test
-  ks_results <- ks.test(dist1, dist2)
-  
-  # Return a list with pair names and test results
-  return(list(pair = c(name1, name2), ks_test = ks_results))
-}
-
 # Perform pairwise KS tests
 ks_test_results <- lapply(pairs, compute_ks_test)
 
 # Print results
 print(ks_test_results)
 
-
 ```
 # Plot CDF curves to visualize differences in distributions 
 
 ```{r}
+# Build data frames of metric values and Scenario names
 Baseline <- data.frame(metric = metric_values$Baseline, scenario = "Baseline")
-IPCC <- data.frame(metric = metric_values$IPCC, scenario = "IPCC")
+IPCC <- data.frame(metric = metric_values$IPCC, scenario = "IPCC AR6*")
 No_Process <- data.frame(metric = metric_values$No_Process, scenario = "No_Process")
 No_Historical <- data.frame(metric = metric_values$No_Historical, scenario = "No_Historical")
 No_Paleoclimate <- data.frame(metric = metric_values$No_Paleoclimate, scenario = "No_Paleoclimate")
@@ -78,13 +58,7 @@ combined_data <- rbind(Baseline, IPCC, No_Process, No_Historical, No_Paleoclimat
 cdf_df <- recode_scenarios(combined_data)
 
 # Order factor levels for plot 
-scenario_order <- 
-  c("IPCC AR6",
-    "Baseline",
-    "No Process",
-    "No Historical",
-    "No Paleoclimate",
-    "Baseline + Emergent constraints")
+scenario_order <- scenario_order
 
 # Plot CDFs
 CDF_temp <- ggplot(cdf_df, 
@@ -100,8 +74,10 @@ CDF_temp <- ggplot(cdf_df,
   theme(axis.title = element_text(size = 20))
 CDF_temp
 
+# Adding line type guide
 CDF_fig <- CDF_temp + guides(color = guide_legend(override.aes = list(color = ECS_COLORS, 
                                                                       linetype = LINE_TYPE)))
+CDF_fig
 
 ggsave("figures/fig_4_CDF.png",
        CDF_fig,

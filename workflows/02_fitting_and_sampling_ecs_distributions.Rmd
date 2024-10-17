@@ -11,8 +11,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The goal of this script is to fit and easy to sample parametric distribution to the ECS values provided in S20. We will then sample the distributions, save the data, and visualize them.
 
+## Source all setup, mapping, and helper functions stored in `sourced`
 ```{r}
-library(MASS)
+source("sourced/source_all.R")
 ```
 
 # Fit Distribution to Sherwood et al. 2020 data 
@@ -25,7 +26,7 @@ Some notes on `fitdistr()` usage: The function fits a maximum likelihood distrib
 
 ```{r}
 # read in the ecs_data and store as a list 
-ecs_data <- readRDS("data/ecs_posterior_data_S20.RDS")
+ecs_data <- readRDS("data/ecs_prior_data_S20.RDS")
 
 ```
 
@@ -69,10 +70,6 @@ ecs_sample_list <- lapply(hyper_param_list, function(evidence) {
 The result is a new list (`ecs_sample_list`) of data frames, one for each evidence scenario, that contains a vector of ECS values sampled from respective gamma distributions. 
 
 # Visualize Simulated Samples
-
-```{r}
-library(ggplot2)
-```
 
 Once the ECS samples are produced and stored in a list of data frames (`ecs_sample_list`), we visualize the sample distribution with `ggplot2`.
 
@@ -125,46 +122,9 @@ quantile(ecs_sample_list$Baseline_Emergent_constraints$ECS, probs = c(0.05,0.50,
 
 Here we want to determine the optimal distribution hyperparameters for a skew normal distribution that meets specified quantile requirements. For this task we utilize the `sn` and `optimx` packages. The objective it to fit a skew normal distribution such that at quantile 5%, 50%, and 95% reflect IPCC ECS range (3, 2-5).
 
-
-We need the following packages:
-```{r}
-# Load the required libraries
-library(sn)
-library(optimx)
-
-```
-
 ## Define objective function
 
-Define an objective function to quantify the deviation of the quantiles for the skew normal distribution from the desired IPCC values. 
-
-```{r}
-# Objective function to find the optimal xi, omega, and alpha
-objective_function <- function(params) {
-  xi <- params[1]
-  omega <- params[2]
-  alpha <- params[3]
-  
-  # Calculate the quantiles for the given parameters
-  q5 <- qsn(0.05, xi = xi, omega = omega, alpha = alpha)
-  q50 <- qsn(0.50, xi = xi, omega = omega, alpha = alpha)
-  q95 <- qsn(0.95, xi = xi, omega = omega, alpha = alpha)
-  
-  # Desired quantiles
-  desired_q5 <- 2.0
-  desired_q50 <- 3.0
-  desired_q95 <- 5.0
-  
-  # Calculate the squared differences
-  error <- (q5 - desired_q5)^2 + (q50 - desired_q50)^2 + (q95 - desired_q95)^2
-  
-  # Print intermediate values for debugging
-  cat("xi:", xi, "omega:", omega, "alpha:", alpha, "error:", error, "\n")
-  
-  return(error)
-}
-
-```
+We define an objective function to quantify the deviation of the quantiles for the skew normal distribution from the desired IPCC values. This function is stored in `sourced/helper_functions.R`. 
 
 Here, the hyperparameters (`xi`, `omega`, and `alpha`) represent the location, scale, and shape of the skew normal distribution, respectively. The function computes quantiles for the 5th, 50th, and 95th percentiles from the skew normal distribution provided initial hyperparameters (`qsn()`). It then compares these values to the targeted IPCC values (3.0, 2.0-5.0) by calculating squared differences. This approach allows us to determine how well the hyperparameters of the skew normal distribution align with the desired percentiles.
 
@@ -233,7 +193,7 @@ print(likely)
 ```
 Here we can see that the very likely distribution aligns exactly with the IPCC expectation. However, the likely range is slightly more constrained that what has been proposed by IPCC AR6.
 
-## Visualize the distribution
+## preliminary visualization of the distribution
 ```{r}
 # convert the data to data frame
 IPCC_est_df <- data.frame(ECS = data)
@@ -249,17 +209,12 @@ ECS_sn <-
             xlim = c(2.0, 5.0), fill = "#F21A00", alpha = 0.5) +  # Shade area between 2.0 and 5.0
   geom_area(stat = "function", fun = dsn, args = list(xi = xi, omega = omega, alpha = alpha),
             xlim = c(2.6, 3.43), fill = "#F21A00", alpha = 0.7) +
-  # geom_area(stat = "function", fun = dsn, args = list(xi = xi, omega = omega, alpha = alpha),
-  #           xlim = c(0, 2.0), fill = "grey", alpha = 0.5) +
-  # geom_area(stat = "function", fun = dsn, args = list(xi = xi, omega = omega, alpha = alpha),
-  #           xlim = c(5.0, 8.0), fill = "grey", alpha = 0.5) +
   geom_area(stat = "function", fun = dsn, args = list(xi = xi, omega = omega, alpha = alpha),
             xlim = c(3.0, 3.01), fill = "black", alpha = 0.5)
 
 
 ECS_sn
 ```
-
 
 ## Add the IPCC AR6 distribution value to ECS sample list
 ```{r}
