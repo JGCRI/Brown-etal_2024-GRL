@@ -106,14 +106,14 @@ temp_projection_plot <-
   labs(x = "Year", 
        y = expression(paste("Future Warming (GSAT) relative to 1995-2014 (", degree, "C)"))) +
     facet_wrap(~scenario) +
-  theme_light(base_size = 18) +
+  theme_light() +
   theme(legend.position = "none", 
-        axis.text.x = element_text(size = 16, angle = 35)) +
-  theme(axis.text = element_text(size = 16), 
-        axis.text.x = element_text(size = 16, vjust = 0.9),
-        axis.title.x = element_text(size = 20), 
-        axis.title.y = element_text(size = 20), 
-        strip.text = element_text(size = 18, color = "black"), 
+        axis.text.x = element_text(size = 22, angle = 35)) +
+  theme(axis.text = element_text(size = 22), 
+        axis.text.x = element_text(size = 24, vjust = 0.9),
+        axis.title.x = element_blank(), 
+        axis.title.y = element_text(size = 24), 
+        strip.text = element_text(size = 22, color = "black"), 
         strip.background = element_rect(fill = "white"))
 
 temp_projection_plot
@@ -166,7 +166,10 @@ warming_projection_plot <-
                   ymin = lower_ci, 
                   ymax = upper_ci), 
               fill = SSP_COLORS[[9]],
-              alpha = 0.2)
+              alpha = 0.2) +
+  theme_light() +
+  theme(axis.text = element_text(size = 22), 
+        axis.text.x = element_text(size = 21, vjust = 0.9))
 
 
 ggsave("figures/fig_3a_temp_warming_projections.png",
@@ -226,10 +229,11 @@ probability_plot <-
        x = NULL) +
   coord_flip() +
   theme_light(base_size = 20) +
-  theme(legend.position = "bottom", 
-        axis.text = element_text(size = 16), 
-        axis.text.x = element_text(size = 16),
-        legend.text = element_text(size = 16))
+  theme(legend.position = "right", 
+        axis.text = element_text(size = 22), 
+        axis.text.x = element_text(size = 22),
+        axis.title.x = element_text(size = 24),
+        legend.text = element_text(size = 22))
 
 probability_plot
 
@@ -238,7 +242,7 @@ probability_plot
 Save the plot:
 ```{r}
 # save the probability plot
-ggsave("figures/fig_5_temperature_probability_plot.png", 
+ggsave("figures/fig_3c_temperature_probability_plot.png", 
        probability_plot, 
        device = "png", 
        width = 14,
@@ -307,12 +311,12 @@ gsat_stats_plot <-
              aes(x = scenario, 
                  y = upper + 0.5, 
                  label = paste(round(median, 2), "\n[", round(lower, 2), ",", round(upper, 2), "]")), 
-             size = 4) +
-  theme_light(base_size = 16) +
+             size = 6) +
+  theme_light(base_size = 20) +
   theme(axis.title.y = element_blank(),
         axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 35, vjust = 1.05, hjust = 1),
-        axis.text = element_text(size = 14))
+        axis.text = element_text(size = 20))
 
 gsat_stats_plot
 ```
@@ -329,15 +333,23 @@ ggsave("figures/fig_3b_temperature_metric_distribution.png",
 
 Adding `warming_projection_plot` and `gsat_stats_plot` to the same paneled figure:
 ```{r}
-combined_temp_plot <- ggarrange(warming_projection_plot, gsat_stats_plot, labels = c("A", "B"), ncol = 2, nrow = 1, widths = c(2, 1.2))
+# label 
+Panel_a <- warming_projection_plot + ggtitle("A") + theme(plot.title = element_text(size = 24, face = "bold"))
+Panel_b <- gsat_stats_plot + ggtitle("B") + theme(plot.title = element_text(size = 24, face = "bold"))
+Panel_c <- probability_plot + ggtitle("C") + theme(plot.title = element_text(size = 24, face = "bold"))
+
+top_row <- ggarrange(Panel_a, Panel_b, ncol = 2, nrow = 1, 
+                                widths = c(3, 2), heights = c(4, 2))
+
+combined_temp_plot <- ggarrange(top_row, Panel_c, ncol = 1, nrow = 2)
 
 combined_temp_plot
 
 ggsave("figures/fig_3_temperature_combined.png",
        combined_temp_plot,
        device = "png", 
-       width = 20, 
-       height = 9, 
+       width = 25, 
+       height = 18, 
        units = "in", 
        dpi = "print")
 ```
