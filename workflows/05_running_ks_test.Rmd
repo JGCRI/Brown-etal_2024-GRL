@@ -69,9 +69,13 @@ CDF_temp <- ggplot(cdf_df,
             linewidth = 1,) +
   scale_color_manual(values = ECS_COLORS, name = "ECS configurations") +
   scale_linetype_manual(values = LINE_TYPE, guide = "none") +
-  labs(x = "Future Warming (GSAT) relative to 1995-2014", y = "Cumulative Density") +
+  labs(x = expression(paste("Future Warming (GSAT) relative to 1995-2014 (", degree, "C)")), 
+       y = "Cumulative Density") +
   theme_light(base_size = 16) +
-  theme(axis.title = element_text(size = 20))
+  theme(axis.title = element_text(size = 20), 
+        axis.text = element_text(size = 18),
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 18))
 CDF_temp
 
 # Adding line type guide
