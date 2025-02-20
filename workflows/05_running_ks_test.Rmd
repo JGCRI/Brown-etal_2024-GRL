@@ -67,6 +67,7 @@ CDF_temp <- ggplot(cdf_df,
                        linetype = scenario)) +
   geom_line(stat = "ecdf", 
             linewidth = 1,) +
+  scale_x_continuous(limits = c(0, 4.5), expand = c(0, 0)) +
   scale_color_manual(values = ECS_COLORS, name = "ECS configurations") +
   scale_linetype_manual(values = LINE_TYPE, guide = "none") +
   labs(x = expression(paste("Future Warming (GSAT) relative to 1995-2014 (", degree, "C)")), 
