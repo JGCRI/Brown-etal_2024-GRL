@@ -57,8 +57,7 @@ combined_data <- rbind(Baseline, IPCC, No_Process, No_Historical, No_Paleoclimat
 # recoding scenario names for the plot
 cdf_df <- recode_scenarios(combined_data)
 
-# Order factor levels for plot 
-scenario_order <- scenario_order
+cdf_df$scenario <- factor(cdf_df$scenario, levels = names(ECS_COLORS))
 
 # Plot CDFs
 CDF_temp <- ggplot(cdf_df, 
