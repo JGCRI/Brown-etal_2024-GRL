@@ -1,5 +1,7 @@
+<!-- badges: start -->
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13943103.svg)](https://doi.org/10.5281/zenodo.13943103)
 
+<!-- badges: end -->
 # Brown et al. 2025 
 
 **The effect of different climate sensitivity priors on projected climate: A probabilistic analysis**
