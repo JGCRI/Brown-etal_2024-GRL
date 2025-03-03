@@ -170,14 +170,29 @@ recode_scenarios <- function(data) {
 
 # Compute data summary (median and 5-95% CI)
 
-#' Title
+#' Compute summary statistics for GSAT metrics (median and 5-95% CI)
 #'
-#' @param data
+#' This functions calculates the median and 5-95% confidence interval (CI) for
+#' global surface air temperature (GSAT) metric results, grouped by scenario.
+#' This function uses weighted quantiles to account for probabilistic distributions.
 #'
-#' @return
+#' @param data A data frame containing at least three columns:
+#'   \code{scenario} (character or factor),
+#'   \code{metric_result} (numeric values representing GSAT results), and
+#'   \code{norm_weight} (numeric weights for computing weighted quantiles).
+#'
+#' @return A data frame with summary statistics, including:
+#'   \item{scenario}{The scenario name.}
+#'   \item{median}{The weighted median of \code{metric_result}.}
+#'   \item{lower}{The 5th percentile (lower bound of the confidence interval).}
+#'   \item{upper}{The 95th percentile (upper bound of the confidence interval).}
+#'
+#' @note This function assumes that \code{metric_result} is numeric and
+#'   that \code{norm_weight} represents valid weights for computing
+#'   weighted quantiles.
+#'
 #' @export
 #'
-#' @examples
 data_summary <- function(data){
 
   gsat_metric_stats <-
@@ -193,15 +208,23 @@ data_summary <- function(data){
 
 }
 
-# Function to compute KS test for a pair of distributions
-#' Title
+#' Compute Kolmogorov-Smirnov (KS) test for a pair of distributions
 #'
-#' @param pair
+#' This function performs a two-sample KS test to compare two empirical distributions.
+#' The test analyzes whether two samples could come from the same hypothetical
+#' distribution.
 #'
-#' @return
+#' @param pair A numeric vector of length 2, containing the indices of the two
+#'   distributions to compare. These indices correspond to entries in
+#'   \code{names_distributions} and \code{metric_values}.
+#'
+#' @return A list containing:
+#'   \item{pair}{A character vector with the names of the two compared distributions.}
+#'   \item{ks_test}{An object of class \code{htest} containing the results of
+#'   the KS test, including the test statistic and p-value.}
+#'
 #' @export
 #'
-#' @examples
 compute_ks_test <- function(pair) {
   # Extract distribution names and data
   name1 <- names_distributions[pair[1]]
@@ -216,19 +239,27 @@ compute_ks_test <- function(pair) {
   return(list(pair = c(name1, name2), ks_test = ks_results))
 }
 
-# Computing Kernal Density Estimates
-
-#' Title
+#' Compute Kernal Density Estimates (KDE) with weights
 #'
-#' @param data
-#' @param split_by
-#' @param variable
-#' @param weights
+#' This function computes KDE for a specified variable, splitting the data by a
+#' categorical grouping variable. It allows for weighted density estimation to account
+#' for varying data importance.
 #'
-#' @return
+#' @param data A data frame containing the data to be analyzed.
+#' @param split_by A factor or character vector indicating how the data should be
+#'   split into groups before KDE computation (e.g., different scenarios or categories).
+#' @param variable A numeric vector representing the variable for which the kernel
+#'   density estimate is computed.
+#' @param weights A numeric vector of the same length as \code{variable}, specifying
+#'   the weights for weighted density estimation.
+#'
+#' @return A data frame containing three columns:
+#'   \item{scenario}{The grouping variable (from \code{split_by}).}
+#'   \item{value}{The x-coordinates of the estimated density function.}
+#'   \item{density}{The corresponding density estimates.}
+#'
 #' @export
 #'
-#' @examples
 kde_values <- function(data, split_by, variable, weights) {
 
   split_df <- split(data, split_by)
