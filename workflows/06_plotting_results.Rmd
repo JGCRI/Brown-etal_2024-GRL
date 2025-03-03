@@ -334,7 +334,8 @@ ggsave("figures/fig_3b_temperature_metric_distribution.png",
 Adding `warming_projection_plot` and `gsat_stats_plot` to the same paneled figure:
 ```{r}
 # label 
-Panel_a <- warming_projection_plot + ggtitle("A") + theme(plot.title = element_text(size = 24, face = "bold"))
+Panel_a <- warming_projection_plot + ggtitle("A") + theme(plot.title = element_text(size = 24, face = "bold"), 
+                                                          axis.text.x = element_text(size = 22, angle = 35, vjust = 1, hjust = 1)) 
 Panel_b <- gsat_stats_plot + ggtitle("B") + theme(plot.title = element_text(size = 24, face = "bold"))
 Panel_c <- probability_plot + ggtitle("C") + theme(plot.title = element_text(size = 24, face = "bold"))
 
