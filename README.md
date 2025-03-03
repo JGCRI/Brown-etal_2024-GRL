@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14957278.svg)](https://doi.org/10.5281/zenodo.14957278)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13943103.svg)](https://doi.org/10.5281/zenodo.13943103)
 
 # Brown et al. 2025 
 
