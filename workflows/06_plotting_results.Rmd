@@ -486,7 +486,7 @@ kde_df$alpha <- case_when(
 Plot:
 ```{r}
 ECS_posterior <- 
-  ggplot(kde_data, 
+  ggplot(kde_df, 
          aes(x = value, 
              y = density,
              fill = interval,
