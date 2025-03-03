@@ -1,14 +1,24 @@
 ## Helper functions
 
-# Objective function to find the optimal xi, omega, and alpha
-#' Title
+#
+#' Objective function for optimizing skew-normal hyperparameters
 #'
-#' @param params
+#' This function calculates the error between the quantiles of a skew-normal distribution
+#' (defined by \code{xi}, \code{omega}, and \code{alpha}) and desired target quantiles.
+#' It is used for parameter optimization.
 #'
-#' @return
+#' @param params A numeric vector of length 3, containing parameters \code{xi} (location),
+#' \code{omega} (scale), and \code{alpha} (shape) of the skew-normal distribution.
+#'
+#' @return A single numeric value representing the squared error between the computed and
+#' desired quantiles (5th, 50th, and 95th percentiles).
+#'
 #' @export
 #'
 #' @examples
+#' params <- c(2.5, 1.0, 0.5)
+#' objective_function(params)
+#'
 objective_function <- function(params) {
   xi <- params[1]
   omega <- params[2]
@@ -33,17 +43,31 @@ objective_function <- function(params) {
   return(error)
 }
 
-# Normalizing data to reference period
-#' Title
+#' Normalize data to a reference period
 #'
-#' @param data
-#' @param ref_start
-#' @param ref_end
+#' This function normalizes time-series data by subtracting the mean value of a specified
+#' reference period from all observations. This is useful for analyzing anomalies relative
+#' to a baseline period.
 #'
-#' @return
+#' @param data A data frame containing at least two columns:
+#'  \code{year} (numeric) and \code{value} (numeric).
+#'  \code{year} represents the time variable, and \code{value} contains
+#'  the data to be normalized.
+#' @param ref_start An integer specifying the first year of the reference period
+#' @param ref_end An integer specifying the last year of the reference period
+#'
+#' @return A numeric vector containing the normalized values, where each data point
+#' is adjusted by subtracting the mean of the reference period.
+#'
 #' @export
 #'
 #' @examples
+#' # Example dataset
+#' data <- data.frame(year = 1990:2020, value = rnorm(31, mean = 2, sd = 0.5))
+#'
+#' # Normalize data using the reference period 1995-2014
+#' normalized_values <- normalize_dat(data, ref_start = 1995, ref_end = 2014)
+#' head(normalized_values)
 normalize_dat <- function(data, ref_start, ref_end) {
 
   # Filter data for the reference period
@@ -63,16 +87,31 @@ normalize_dat <- function(data, ref_start, ref_end) {
   return(norm_dat)
 }
 
-# Normalizing historical temperature data
-#' Title
+#' Normalizing historical temperature data
 #'
-#' @param data
-#' @param reference_years
+#' This function normalizes historical data by subtracting the mean temperature of a specified
+#' reference period from all observations. Unlike \code{normalize_dat()}, which returns only a
+#' numeric vector of normalized values, this function returns the entire modified data frame,
+#' preserving the structure for further analysis.
 #'
-#' @return
+#' @param data A data frame containing at least two columns:
+#'   \code{year} (numeric) and \code{value} (numeric), where \code{year}
+#'   represents the time variable and \code{value} contains the temperature data.
+#' @param reference_years A numeric vector specifying the years to use as the
+#'   reference period for calculating the mean temperature.
+#'
+#' @return A data frame with the same structure as \code{data}, but with the
+#'   \code{value} column adjusted to represent anomalies relative to the reference period.
+#'
 #' @export
 #'
 #' @examples
+#' # Example dataset
+#' data <- data.frame(year = 1980:2020, value = rnorm(41, mean = 15, sd = 0.5))
+#'
+#' # Normalize data using the reference period 1995-2014
+#' normalized_data <- normalize_historical(data, reference_years = 1995:2014)
+#' head(normalized_data)
 normalize_historical <- function(data, reference_years) {
 
     reference_data <- data[data$year %in% reference_years, ]
@@ -87,15 +126,34 @@ normalize_historical <- function(data, reference_years) {
 
   }
 
-# Recoding scenario names for the plot
-#' Title
+
+#' Recode scenario names for plotting
 #'
-#' @param data
+#' This function modifies scenario names in a data set to ensure they are formatted consistently
+#' for plotting. It replaces existing scenario names with more readable or standardized labels.
 #'
-#' @return
+#' @param data A data frame containing a column named \code{scenario}, which holds character
+#'  or factor values representing different scenario configurations.
+#'
+#' @return A data frame with the \code{scenario} column recoded to use standardized scenario
+#' lables.
+#'
+#' @note This function is useful for preparing data for visualizations, ensuring that scenario
+#' labels are clear and consistent in plots.
+#'
 #' @export
 #'
 #' @examples
+#' library(dplyr)  # Ensure dplyr is available for recode_factor()
+#'
+#' # Example dataset
+#' data <- data.frame(scenario = c("IPCC", "Baseline", "No_Historical",
+#'                                 "No_Process", "No_Paleoclimate",
+#'                                 "Baseline_Emergent_constraints"))
+#'
+#' # Recode scenario names
+#' recoded_data <- recode_scenarios(data)
+#' print(recoded_data)
 recode_scenarios <- function(data) {
 
   data$scenario <- recode_factor(
