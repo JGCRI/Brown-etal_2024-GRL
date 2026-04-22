@@ -8,6 +8,8 @@
 
 **Journal**: *Geophysical Research Letters*
 
+**doi:**  https://doi.org/10.1029/2024GL113505
+
 Joseph K Brown*, Kalyn Dorheim, Derek Mu, Abigail Snyder, Claudia Tebaldi, Ben Bond-Lamberty
 
 *corresponding author: [joseph.brown@pnnl.gov](joseph.brown@pnnl.gov)
